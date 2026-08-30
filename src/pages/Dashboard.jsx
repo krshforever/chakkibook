@@ -35,7 +35,7 @@ export default function Dashboard({ setActiveTab }) {
         boxShadow: 'var(--shadow-md)',
         display: 'flex',
         justifyContent: 'space-between',
-        align-items: 'center'
+        alignItems: 'center'
       }}>
         <div>
           <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.8 }}>Aaj ke Rate</span>
