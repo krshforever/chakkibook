@@ -1,5 +1,4 @@
 import React from 'react';
-import { NavLink } from 'react_router_dom'; // Note: check react-router-dom import name
 
 export default function BottomNav({ activeTab, setActiveTab }) {
   const navs = [
