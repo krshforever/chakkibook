@@ -1,166 +1,350 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 
-export default function Dashboard({ setActiveTab }) {
-  const transactions = useStore((state) => state.transactions);
-  const customers = useStore((state) => state.customers);
-  const shop = useStore((state) => state.shop);
+export default function Dashboard({ setActiveTab, onSelectCustomer }) {
   const activeMode = useStore((state) => state.activeMode);
+  const boris = useStore((state) => state.boris);
+  const customers = useStore((state) => state.customers);
+  const markBoriDone = useStore((state) => state.markBoriDone);
 
-  // Today's stats calculation
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Helper for Hindi/Hinglish relative time
+  const getRelativeTime = (dateStr) => {
+    if (!dateStr) return 'Kuch der pehle';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 4) return 'Abhi abhi';
+    if (diffHours < 14) return 'Aaj subah';
+    if (diffDays === 1) return 'Kal (1 din pehle)';
+    if (diffDays > 1) return `${diffDays} din pehle`;
+    return 'Aaj';
+  };
+
   const todayStr = new Date().toISOString().split('T')[0];
-  const todayTxns = transactions.filter((t) => t.date && t.date.startsWith(todayStr));
 
-  // Filtered transactions according to Mode Switch
-  const modeFilteredTxns = transactions.filter((t) => {
-    if (activeMode === 'atta') return t.type === 'pisai';
-    if (activeMode === 'sarson') return t.type === 'pirai' || t.type === 'khari_sale';
-    return true;
+  // Filter Boris by mode
+  const modeBoris = boris.filter((b) => b.mode === activeMode);
+
+  // Search filter
+  const query = searchQuery.trim().toLowerCase();
+
+  // 1. Pending Boris in current mode
+  const pendingBoris = modeBoris
+    .filter((b) => b.status === 'pending')
+    .filter((b) => {
+      if (!query) return true;
+      return (
+        b.customerName?.toLowerCase().includes(query) ||
+        b.grainType?.toLowerCase().includes(query) ||
+        b.notes?.toLowerCase().includes(query)
+      );
+    });
+
+  // 2. Today's Completed Boris in current mode
+  const todayCompletedBoris = modeBoris
+    .filter((b) => b.status === 'done' || b.status === 'picked_up')
+    .filter((b) => {
+      const bDate = b.doneDate || b.createdAt || '';
+      return bDate.startsWith(todayStr);
+    })
+    .filter((b) => {
+      if (!query) return true;
+      return (
+        b.customerName?.toLowerCase().includes(query) ||
+        b.grainType?.toLowerCase().includes(query) ||
+        b.notes?.toLowerCase().includes(query)
+      );
+    });
+
+  // Today's Stats for current mode
+  const allTodayModeDone = modeBoris.filter((b) => {
+    const bDate = b.doneDate || b.createdAt || '';
+    return (b.status === 'done' || b.status === 'picked_up') && bDate.startsWith(todayStr);
   });
 
-  const todayPisaiKg = todayTxns
-    .filter((t) => t.type === 'pisai')
-    .reduce((acc, t) => acc + (Number(t.weight) || 0), 0);
+  const totalKgToday = allTodayModeDone.reduce((sum, b) => sum + (Number(b.inputWeight) || 0), 0);
+  const totalKamaiToday = allTodayModeDone.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+  const todayUdhar = allTodayModeDone
+    .filter((b) => b.paymentMode === 'credit')
+    .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
 
-  const todayPiraiKg = todayTxns
-    .filter((t) => t.type === 'pirai')
-    .reduce((acc, t) => acc + (Number(t.weight) || 0), 0);
+  // Matching customers if search query is active
+  const matchingCustomers = query
+    ? customers.filter(
+        (c) =>
+          c.name.toLowerCase().includes(query) ||
+          (c.phone && c.phone.includes(query)) ||
+          (c.village && c.village.toLowerCase().includes(query))
+      )
+    : [];
 
-  const todayIncome = todayTxns.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-
-  // Total Outstanding Customer Dues (Udhar)
-  const totalUdhar = customers.reduce((acc, c) => acc + (c.balance > 0 ? c.balance : 0), 0);
+  const handleCustomerClick = (customerId, customerName) => {
+    const cust = customers.find((c) => c.id === customerId || c.name === customerName);
+    if (cust && onSelectCustomer) {
+      onSelectCustomer(cust);
+      setActiveTab('khata');
+    } else {
+      setActiveTab('khata');
+    }
+  };
 
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      
-      {/* Rates Quick Banner */}
-      <div style={{
-        background: activeMode === 'atta' 
-          ? 'linear-gradient(135deg, var(--wheat-dark), var(--soil))'
-          : activeMode === 'sarson'
-          ? 'linear-gradient(135deg, var(--mustard), var(--oil-amber))'
-          : 'linear-gradient(135deg, var(--soil), var(--soil-light))',
-        color: activeMode === 'sarson' ? 'var(--soil-dark)' : '#fff',
-        borderRadius: 'var(--radius-md)',
-        padding: '14px 16px',
-        boxShadow: 'var(--shadow-md)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        transition: 'all 0.3s ease'
-      }}>
+    <div className="app-container">
+      {/* 1. Search Bar — Always visible at top */}
+      <div className="search-bar-wrapper">
+        <span className="search-icon">🔍</span>
+        <input
+          type="text"
+          className="search-bar"
+          placeholder="Search customer naam, phone, gaon..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            style={{
+              position: 'absolute',
+              right: '14px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              background: 'none',
+              border: 'none',
+              fontSize: '1rem',
+              color: 'var(--text-muted)',
+              cursor: 'pointer'
+            }}
+          >
+            ✖
+          </button>
+        )}
+      </div>
+
+      {/* Matching Customers Quick-Card when searching */}
+      {query && matchingCustomers.length > 0 && (
         <div>
-          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.9, fontWeight: 700 }}>
-            {activeMode === 'atta' ? '🌾 Atta Mode Rates' : activeMode === 'sarson' ? '🫒 Sarson Oil Mode Rates' : 'Aaj ke Rates'}
-          </span>
-          <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.95rem', fontWeight: 700 }}>
-            {(activeMode === 'all' || activeMode === 'atta') && <span>🌾 Pisai: ₹{shop.rates?.pisai}/kg</span>}
-            {(activeMode === 'all' || activeMode === 'sarson') && <span>🫒 Pirai: ₹{shop.rates?.pirai}/kg</span>}
-            {activeMode === 'sarson' && <span>📦 Khali: ₹{shop.rates?.khari}/kg</span>}
+          <div className="section-header">
+            <span>👥 Matching Grahak ({matchingCustomers.length})</span>
           </div>
-        </div>
-        <button
-          className="btn btn-secondary"
-          onClick={() => setActiveTab('settings')}
-          style={{ padding: '6px 12px', fontSize: '0.8rem', width: 'auto' }}
-        >
-          Badlein
-        </button>
-      </div>
-
-      {/* Today's Summary Metrics */}
-      <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>📊 Aaj ka Hisab (Today's Summary)</span>
-        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-          Mode: {activeMode.toUpperCase()}
-        </span>
-      </h2>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        {(activeMode === 'all' || activeMode === 'atta') && (
-          <div className="card" style={{ background: 'var(--wheat-light)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>🌾 Total Pisai</span>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--wheat-dark)' }}>
-              {todayPisaiKg} <span style={{ fontSize: '0.9rem' }}>kg</span>
-            </div>
-          </div>
-        )}
-
-        {(activeMode === 'all' || activeMode === 'sarson') && (
-          <div className="card" style={{ background: 'var(--mustard-bg)' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>🫒 Sarson Pirai</span>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--soil)' }}>
-              {todayPiraiKg} <span style={{ fontSize: '0.9rem' }}>kg</span>
-            </div>
-          </div>
-        )}
-
-        <div className="card" style={{ background: 'var(--success-bg)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>💰 Aaj ki Kamai</span>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--success)' }}>
-            ₹ {todayIncome}
-          </div>
-        </div>
-
-        <div className="card" style={{ background: 'var(--danger-bg)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>📖 Kul Udhar (Dues)</span>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--danger)' }}>
-            ₹ {totalUdhar}
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Action Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
-        <button className="btn btn-accent" onClick={() => setActiveTab('entry')}>
-          ⚡ Nayi Entry ({activeMode === 'atta' ? 'Pisai' : activeMode === 'sarson' ? 'Pirai' : 'Grind/Press'})
-        </button>
-        <button className="btn btn-secondary" onClick={() => setActiveTab('khata')}>
-          📖 Customer Khata
-        </button>
-      </div>
-
-      {/* Recent Transactions List */}
-      <div style={{ marginTop: '8px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <h3 style={{ fontSize: '1rem' }}>⏱️ {activeMode.toUpperCase()} Entries</h3>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total: {modeFilteredTxns.length}</span>
-        </div>
-
-        {modeFilteredTxns.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-            Is mode me koi entry nahi mili. Nayi entry add karein!
-          </div>
-        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {modeFilteredTxns.slice(0, 6).map((t) => (
-              <div key={t.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px' }}>
+            {matchingCustomers.map((cust) => (
+              <div
+                key={cust.id}
+                className="card"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 14px',
+                  cursor: 'pointer'
+                }}
+                onClick={() => handleCustomerClick(cust.id, cust.name)}
+              >
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span className={`badge badge-${t.type}`}>
-                      {t.type === 'pisai' ? '🌾 Pisai' : t.type === 'pirai' ? '🫒 Pirai' : t.type === 'khari_sale' ? '📦 Khari' : '💵 Payment'}
-                    </span>
-                    <strong style={{ fontSize: '0.95rem' }}>{t.customerName || 'Cash Customer'}</strong>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    {t.weight ? `${t.weight} kg @ ₹${t.rate}/kg` : t.notes || 'Direct payment'}
+                  <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{cust.name}</strong>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    📍 {cust.village || 'Gaon'} • 📱 {cust.phone || 'No phone'}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: t.type === 'payment' ? 'var(--success)' : 'var(--text-main)' }}>
-                    {t.type === 'payment' ? `- ₹${t.amount}` : `₹${t.amount}`}
+                  <div
+                    style={{
+                      fontSize: '1rem',
+                      fontWeight: 800,
+                      color: cust.balance > 0 ? 'var(--danger)' : 'var(--success)'
+                    }}
+                  >
+                    {cust.balance > 0 ? `₹${cust.balance} Udhar` : 'Clear'}
                   </div>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {t.paymentMode === 'credit' ? '🔴 Udhar' : '🟢 Cash/UPI'}
+                  <span style={{ fontSize: '0.72rem', color: 'var(--primary-dark)', fontWeight: 600 }}>
+                    Khata Kholein 👉
                   </span>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
+      {/* 2. Pending Boris Section (Unground / Unprocessed Boris Queue) */}
+      <section>
+        <div className="section-header">
+          <span>📦 Pending Boris ({pendingBoris.length})</span>
+          <span className="section-badge">{activeMode === 'chakki' ? 'Chakki Queue' : 'Spellar Queue'}</span>
+        </div>
+
+        {pendingBoris.length === 0 ? (
+          <div
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '24px 16px',
+              color: 'var(--text-muted)',
+              fontSize: '0.9rem'
+            }}
+          >
+            {query
+              ? 'Koi matching pending bori nahi mili.'
+              : `Koi pending bori nahi hai! Sab ${activeMode === 'chakki' ? 'pisai' : 'pirai'} ho chuki hai.`}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {pendingBoris.map((bori) => (
+              <div key={bori.id} className="bori-card">
+                <div className="bori-info">
+                  <div
+                    className="bori-customer-name"
+                    onClick={() => handleCustomerClick(bori.customerId, bori.customerName)}
+                    title="Tap to view Khata"
+                  >
+                    <span>🟡</span>
+                    <span>{bori.customerName || 'Walk-in Grahak'}</span>
+                  </div>
+                  <div className="bori-details">
+                    <strong>{bori.grainType || (activeMode === 'chakki' ? 'Wheat' : 'Sarson')}</strong> •{' '}
+                    <strong>{bori.inputWeight} kg</strong> • {getRelativeTime(bori.dropOffDate || bori.createdAt)}
+                    {bori.notes ? ` • ${bori.notes}` : ''}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="bori-done-btn"
+                  onClick={() => markBoriDone(bori.id)}
+                  title="Mark as Done"
+                >
+                  <span>✅</span>
+                  <span>Done</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 3. Today's Entries Section (Completed Boris) */}
+      <section>
+        <div className="section-header">
+          <span>✅ Aaj ki Entries ({todayCompletedBoris.length})</span>
+          <span className="section-badge">Today</span>
+        </div>
+
+        {todayCompletedBoris.length === 0 ? (
+          <div
+            className="card"
+            style={{
+              textAlign: 'center',
+              padding: '20px 16px',
+              color: 'var(--text-muted)',
+              fontSize: '0.9rem'
+            }}
+          >
+            {query
+              ? 'Koi matching entry nahi mili.'
+              : `Aaj abhi tak koi ${activeMode === 'chakki' ? 'pisai' : 'pirai'} entry complete nahi hui.`}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {todayCompletedBoris.map((bori) => {
+              const isCredit = bori.paymentMode === 'credit';
+              return (
+                <div key={bori.id} className="entry-row">
+                  <div className="entry-row-left">
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => handleCustomerClick(bori.customerId, bori.customerName)}
+                    >
+                      <span>{isCredit ? '🔴' : '🟢'}</span>
+                      <span>{bori.customerName || 'Cash Customer'}</span>
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                      {bori.inputWeight ? `${bori.inputWeight} kg ${bori.grainType || ''}` : bori.notes || 'Entry'}{' '}
+                      • {bori.paymentMode === 'credit' ? 'Udhar' : bori.paymentMode === 'upi' ? 'UPI' : 'Cash'}
+                    </div>
+                  </div>
+
+                  <div className="entry-row-right">
+                    <div
+                      style={{
+                        fontFamily: 'var(--font-head)',
+                        fontSize: '1.15rem',
+                        fontWeight: 800,
+                        color: isCredit ? 'var(--danger)' : 'var(--text-main)'
+                      }}
+                    >
+                      ₹ {bori.amount}
+                    </div>
+                    <span className={`status-pill ${bori.paymentMode || 'cash'}`}>
+                      {bori.paymentMode === 'credit' ? 'Udhar' : bori.paymentMode === 'upi' ? 'UPI' : 'Cash'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* 4. Today's Summary (Positioned at Bottom as per spec) */}
+      <section style={{ marginTop: '8px' }}>
+        <div className="section-header">
+          <span>💰 Aaj ka Summary</span>
+          <span className="section-badge">{activeMode.toUpperCase()}</span>
+        </div>
+
+        <div className="stat-card-row">
+          {/* Card 1: Total Ground / Pressed */}
+          <div className="stat-card">
+            <div className="stat-number">
+              {totalKgToday}
+              <span style={{ fontSize: '1rem', fontWeight: 600, marginLeft: '2px' }}>kg</span>
+            </div>
+            <div className="stat-label">Total {activeMode === 'chakki' ? 'Ground' : 'Pressed'}</div>
+            <div className="stat-sub">{activeMode === 'chakki' ? 'Pisai' : 'Pirai'}</div>
+          </div>
+
+          {/* Card 2: Income / Kamai */}
+          <div className="stat-card">
+            <div className="stat-number" style={{ color: 'var(--success)' }}>
+              ₹{totalKamaiToday}
+            </div>
+            <div className="stat-label">Kamai</div>
+            <div className="stat-sub">(Income)</div>
+          </div>
+
+          {/* Card 3: Udhar / Dues */}
+          <div className="stat-card">
+            <div className="stat-number" style={{ color: 'var(--danger)' }}>
+              ₹{todayUdhar}
+            </div>
+            <div className="stat-label">Udhar</div>
+            <div className="stat-sub">(Dues)</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Action button to Jump to Naya Entry */}
+      <button
+        type="button"
+        className="big-btn"
+        onClick={() => setActiveTab('entry')}
+        style={{ marginTop: '4px' }}
+      >
+        <span>➕</span>
+        <span>Nayi Bori Entry Karein</span>
+      </button>
     </div>
   );
 }
