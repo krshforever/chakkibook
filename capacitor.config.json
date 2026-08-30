@@ -1,0 +1,6 @@
+{
+  "appId": "com.chakkibook.app",
+  "appName": "Chakkibook",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
