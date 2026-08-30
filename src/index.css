@@ -1,0 +1,263 @@
+/* Chakkibook — Desi Rustic Design System */
+:root {
+  /* Earthy Color Palette (HSL) */
+  --wheat: hsl(38, 80%, 58%);
+  --wheat-light: hsl(40, 85%, 92%);
+  --wheat-dark: hsl(34, 70%, 40%);
+
+  --soil: hsl(24, 45%, 26%);
+  --soil-light: hsl(26, 35%, 45%);
+  --soil-dark: hsl(20, 50%, 15%);
+
+  --mustard: hsl(45, 95%, 48%);
+  --mustard-bg: hsl(45, 90%, 94%);
+
+  --oil-amber: hsl(36, 90%, 52%);
+  --oil-bg: hsl(38, 90%, 94%);
+
+  --khari-brown: hsl(28, 55%, 38%);
+  --khari-bg: hsl(28, 50%, 93%);
+
+  /* UI Neutral Tokens */
+  --bg-main: hsl(36, 35%, 96%);
+  --bg-card: hsl(38, 40%, 98%);
+  --bg-elevated: #ffffff;
+  
+  --text-main: hsl(24, 45%, 16%);
+  --text-muted: hsl(24, 20%, 48%);
+  --text-inverse: #ffffff;
+
+  --border-light: hsl(34, 25%, 88%);
+  --border-focus: hsl(38, 80%, 50%);
+
+  --success: hsl(142, 60%, 38%);
+  --success-bg: hsl(142, 60%, 94%);
+  --danger: hsl(0, 70%, 50%);
+  --danger-bg: hsl(0, 70%, 94%);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 9999px;
+
+  --shadow-sm: 0 2px 8px rgba(45, 25, 10, 0.05);
+  --shadow-md: 0 4px 18px rgba(45, 25, 10, 0.08);
+  --shadow-lg: 0 10px 30px rgba(45, 25, 10, 0.12);
+
+  --font-heading: 'Outfit', -apple-system, sans-serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+}
+
+/* Dark Mode Overrides */
+[data-theme='dark'] {
+  --bg-main: hsl(24, 30%, 10%);
+  --bg-card: hsl(24, 25%, 15%);
+  --bg-elevated: hsl(24, 25%, 18%);
+
+  --text-main: hsl(36, 35%, 92%);
+  --text-muted: hsl(34, 15%, 65%);
+
+  --border-light: hsl(24, 20%, 25%);
+
+  --wheat-light: hsl(38, 40%, 20%);
+  --mustard-bg: hsl(45, 40%, 20%);
+  --oil-bg: hsl(36, 40%, 20%);
+  --khari-bg: hsl(28, 40%, 20%);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  line-height: 1.5;
+  min-height: 100vh;
+  padding-bottom: 80px; /* Space for mobile bottom bar */
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Common Layout Utilities */
+.app-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:active {
+  transform: scale(0.99);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--wheat-dark), var(--soil));
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:active {
+  opacity: 0.9;
+  transform: translateY(1px);
+}
+
+.btn-secondary {
+  background: var(--wheat-light);
+  color: var(--wheat-dark);
+  border: 1px solid var(--border-light);
+}
+
+.btn-accent {
+  background: linear-gradient(135deg, var(--mustard), var(--oil-amber));
+  color: var(--soil-dark);
+  font-weight: 700;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--soil-light);
+  color: var(--text-main);
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  border: 1.5px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.input-field:focus {
+  border-color: var(--border-focus);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+}
+
+.badge-pisai { background: var(--wheat-light); color: var(--wheat-dark); }
+.badge-pirai { background: var(--mustard-bg); color: var(--soil); }
+.badge-khari { background: var(--khari-bg); color: var(--khari-brown); }
+.badge-payment { background: var(--success-bg); color: var(--success); }
+.badge-expense { background: var(--danger-bg); color: var(--danger); }
+
+/* Header & Navigation */
+.top-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--soil);
+  color: var(--text-inverse);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-md);
+}
+
+.top-header h1 {
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
+}
+
+.nav-item.active {
+  color: var(--wheat-dark);
+}
+
+.nav-item svg {
+  width: 22px;
+  height: 22px;
+}
+
+.fab-btn {
+  position: fixed;
+  bottom: 70px;
+  right: 20px;
+  z-index: 99;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mustard), var(--wheat-dark));
+  color: var(--soil-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  border: none;
+  cursor: pointer;
+}
