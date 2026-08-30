@@ -6,8 +6,13 @@ export default function NewEntry({ setActiveTab }) {
   const customers = useStore((state) => state.customers);
   const addTransaction = useStore((state) => state.addTransaction);
   const addCustomer = useStore((state) => state.addCustomer);
+  const activeMode = useStore((state) => state.activeMode);
 
-  const [type, setType] = useState('pisai'); // pisai, pirai, khari_sale, payment
+  // Default type based on active mode (Atta -> Pisai, Sarson -> Pirai)
+  const initialType = activeMode === 'sarson' ? 'pirai' : 'pisai';
+  const initialRate = initialType === 'pirai' ? shop.rates.pirai : shop.rates.pisai;
+
+  const [type, setType] = useState(initialType); // pisai, pirai, khari_sale, payment
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [newCustomerName, setNewCustomerName] = useState('');
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
@@ -15,7 +20,7 @@ export default function NewEntry({ setActiveTab }) {
 
   const [grainType, setGrainType] = useState('Wheat (Gehun)');
   const [weight, setWeight] = useState('');
-  const [rate, setRate] = useState(shop.rates.pisai);
+  const [rate, setRate] = useState(initialRate);
   const [paymentMode, setPaymentMode] = useState('cash'); // cash, upi, credit
   const [notes, setNotes] = useState('');
 
@@ -77,7 +82,9 @@ export default function NewEntry({ setActiveTab }) {
 
   return (
     <div className="app-container">
-      <h2 style={{ fontSize: '1.2rem', marginBottom: '14px' }}>⚡ Nayi Entry Add Karein</h2>
+      <h2 style={{ fontSize: '1.2rem', marginBottom: '14px' }}>
+        ⚡ Nayi Entry ({activeMode === 'atta' ? '🌾 Atta Pisai' : activeMode === 'sarson' ? '🫒 Sarson Pirai' : 'All Modes'})
+      </h2>
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         

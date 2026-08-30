@@ -5,10 +5,18 @@ export default function Dashboard({ setActiveTab }) {
   const transactions = useStore((state) => state.transactions);
   const customers = useStore((state) => state.customers);
   const shop = useStore((state) => state.shop);
+  const activeMode = useStore((state) => state.activeMode);
 
   // Today's stats calculation
   const todayStr = new Date().toISOString().split('T')[0];
   const todayTxns = transactions.filter((t) => t.date && t.date.startsWith(todayStr));
+
+  // Filtered transactions according to Mode Switch
+  const modeFilteredTxns = transactions.filter((t) => {
+    if (activeMode === 'atta') return t.type === 'pisai';
+    if (activeMode === 'sarson') return t.type === 'pirai' || t.type === 'khari_sale';
+    return true;
+  });
 
   const todayPisaiKg = todayTxns
     .filter((t) => t.type === 'pisai')
@@ -28,20 +36,28 @@ export default function Dashboard({ setActiveTab }) {
       
       {/* Rates Quick Banner */}
       <div style={{
-        background: 'linear-gradient(135deg, var(--soil), var(--soil-light))',
-        color: '#fff',
+        background: activeMode === 'atta' 
+          ? 'linear-gradient(135deg, var(--wheat-dark), var(--soil))'
+          : activeMode === 'sarson'
+          ? 'linear-gradient(135deg, var(--mustard), var(--oil-amber))'
+          : 'linear-gradient(135deg, var(--soil), var(--soil-light))',
+        color: activeMode === 'sarson' ? 'var(--soil-dark)' : '#fff',
         borderRadius: 'var(--radius-md)',
         padding: '14px 16px',
         boxShadow: 'var(--shadow-md)',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        transition: 'all 0.3s ease'
       }}>
         <div>
-          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.8 }}>Aaj ke Rate</span>
-          <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.9rem', fontWeight: 600 }}>
-            <span>🌾 Pisai: ₹{shop.rates?.pisai}/kg</span>
-            <span>🫒 Pirai: ₹{shop.rates?.pirai}/kg</span>
+          <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.9, fontWeight: 700 }}>
+            {activeMode === 'atta' ? '🌾 Atta Mode Rates' : activeMode === 'sarson' ? '🫒 Sarson Oil Mode Rates' : 'Aaj ke Rates'}
+          </span>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '4px', fontSize: '0.95rem', fontWeight: 700 }}>
+            {(activeMode === 'all' || activeMode === 'atta') && <span>🌾 Pisai: ₹{shop.rates?.pisai}/kg</span>}
+            {(activeMode === 'all' || activeMode === 'sarson') && <span>🫒 Pirai: ₹{shop.rates?.pirai}/kg</span>}
+            {activeMode === 'sarson' && <span>📦 Khali: ₹{shop.rates?.khari}/kg</span>}
           </div>
         </div>
         <button
@@ -54,22 +70,31 @@ export default function Dashboard({ setActiveTab }) {
       </div>
 
       {/* Today's Summary Metrics */}
-      <h2 style={{ fontSize: '1.1rem', margin: 0 }}>📊 Aaj ka Hisab (Today's Ledger)</h2>
+      <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span>📊 Aaj ka Hisab (Today's Summary)</span>
+        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+          Mode: {activeMode.toUpperCase()}
+        </span>
+      </h2>
       
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        <div className="card" style={{ background: 'var(--wheat-light)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>🌾 Total Pisai</span>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--wheat-dark)' }}>
-            {todayPisaiKg} <span style={{ fontSize: '0.9rem' }}>kg</span>
+        {(activeMode === 'all' || activeMode === 'atta') && (
+          <div className="card" style={{ background: 'var(--wheat-light)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>🌾 Total Pisai</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--wheat-dark)' }}>
+              {todayPisaiKg} <span style={{ fontSize: '0.9rem' }}>kg</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="card" style={{ background: 'var(--mustard-bg)' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>🫒 Sarson Pirai</span>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--soil)' }}>
-            {todayPiraiKg} <span style={{ fontSize: '0.9rem' }}>kg</span>
+        {(activeMode === 'all' || activeMode === 'sarson') && (
+          <div className="card" style={{ background: 'var(--mustard-bg)' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>🫒 Sarson Pirai</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--soil)' }}>
+              {todayPiraiKg} <span style={{ fontSize: '0.9rem' }}>kg</span>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="card" style={{ background: 'var(--success-bg)' }}>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>💰 Aaj ki Kamai</span>
@@ -89,7 +114,7 @@ export default function Dashboard({ setActiveTab }) {
       {/* Quick Action Buttons */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
         <button className="btn btn-accent" onClick={() => setActiveTab('entry')}>
-          ⚡ Nayi Entry (Grind/Press)
+          ⚡ Nayi Entry ({activeMode === 'atta' ? 'Pisai' : activeMode === 'sarson' ? 'Pirai' : 'Grind/Press'})
         </button>
         <button className="btn btn-secondary" onClick={() => setActiveTab('khata')}>
           📖 Customer Khata
@@ -99,17 +124,17 @@ export default function Dashboard({ setActiveTab }) {
       {/* Recent Transactions List */}
       <div style={{ marginTop: '8px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <h3 style={{ fontSize: '1rem' }}>⏱️ Haal hi ki Entries</h3>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total: {transactions.length}</span>
+          <h3 style={{ fontSize: '1rem' }}>⏱️ {activeMode.toUpperCase()} Entries</h3>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total: {modeFilteredTxns.length}</span>
         </div>
 
-        {transactions.length === 0 ? (
+        {modeFilteredTxns.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
-            Koi entry nahi mili. Nayi entry add karein!
+            Is mode me koi entry nahi mili. Nayi entry add karein!
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {transactions.slice(0, 5).map((t) => (
+            {modeFilteredTxns.slice(0, 6).map((t) => (
               <div key={t.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

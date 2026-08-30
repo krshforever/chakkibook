@@ -86,9 +86,11 @@ export const useStore = create(
       expenses: initialExpenses,
       user: { name: 'Owner', role: 'owner', shopId: 'shop_default_1' },
       theme: 'light',
+      activeMode: 'all', // 'all' | 'atta' | 'sarson'
 
       // Actions
       setTheme: (theme) => set({ theme }),
+      setActiveMode: (mode) => set({ activeMode: mode }),
 
       updateShopRates: (newRates) => set((state) => ({
         shop: { ...state.shop, rates: { ...state.shop.rates, ...newRates } }
