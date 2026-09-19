@@ -36,3 +36,6 @@ dist/
 *.sw?
 .vscode/
 .idea/
+.firebase/
+*service-account*.json
+
