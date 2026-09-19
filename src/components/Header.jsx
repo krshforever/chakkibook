@@ -19,8 +19,14 @@ export default function Header() {
       <div className="top-header">
         <div className="app-title-group">
           <div>
-            <h1 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              🌾 Chakkibook
+            <h1 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <img 
+                src="/logo.png" 
+                alt="Chakkibook Logo" 
+                style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} 
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+              <span>Chakkibook</span>
             </h1>
             <p style={{ fontSize: '0.72rem', opacity: 0.85, margin: 0, fontWeight: 500 }}>
               {shop.name || 'Vanshu Atta Chakki & Oil Mill'}
