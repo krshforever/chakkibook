@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Repository
@@ -32,9 +34,6 @@ jobs:
       - name: Build Web Production App
         run: npm run build
 
-      - name: Create Web Zip Package
-        run: cd dist && zip -r ../chakkibook-v1-web.zip .
-
       - name: Add & Sync Capacitor Android
         run: |
           npx cap add android
@@ -48,18 +47,13 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Copy APK to Root
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk Chakkibook-v1.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Chakkibook-v3.apk
 
-      - name: Upload Web Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: chakkibook-v1-web
-          path: chakkibook-v1-web.zip
-          retention-days: 30
-
-      - name: Upload Android APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Chakkibook-v1-APK
-          path: Chakkibook-v1.apk
-          retention-days: 30
+      - name: Create GitHub Release with APK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete v3.0 --yes || true
+          git tag -d v3.0 || true
+          git push origin :refs/tags/v3.0 || true
+          gh release create v3.0 Chakkibook-v3.apk --title "Chakkibook V3 Release" --notes "Chakkibook V3 APK Build"
