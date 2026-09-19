@@ -39,6 +39,7 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.SEND_SMS" />' android/app/src/main/AndroidManifest.xml
 
       - name: Build Android APK (Gradle assembleDebug)
         run: |

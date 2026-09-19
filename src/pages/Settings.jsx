@@ -1,22 +1,30 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { logoutUser } from '../firebase/auth';
 
 export default function Settings() {
   const shop = useStore((state) => state.shop);
+  const userRole = useStore((state) => state.userRole);
+  const currentUser = useStore((state) => state.currentUser);
+  const members = useStore((state) => state.members || []);
+  const hasPermission = useStore((state) => state.hasPermission);
   const updateShopRates = useStore((state) => state.updateShopRates);
   const updateShopInfo = useStore((state) => state.updateShopInfo);
+  const updateSmsSettings = useStore((state) => state.updateSmsSettings);
+  const addTeamMember = useStore((state) => state.addTeamMember);
+  const removeTeamMember = useStore((state) => state.removeTeamMember);
   const inventory = useStore((state) => state.inventory);
   const updateStock = useStore((state) => state.updateStock);
+  const logout = useStore((state) => state.logout);
   const fullStore = useStore((state) => state);
 
-  // Form State: Chakki Rates
+  // Form State: Rates
   const [pisaiRate, setPisaiRate] = useState(shop.chakkiRates?.pisai || 4);
   const [kaddaWheat, setKaddaWheat] = useState(shop.chakkiRates?.kadda?.wheat || 1);
   const [kaddaDana, setKaddaDana] = useState(shop.chakkiRates?.kadda?.dana || 1.5);
   const [kaddaMaize, setKaddaMaize] = useState(shop.chakkiRates?.kadda?.maize || 1);
   const [kaddaPer, setKaddaPer] = useState(shop.chakkiRates?.kaddaPer || 40);
 
-  // Form State: Spellar Rates
   const [piraiRate, setPiraiRate] = useState(shop.spellarRates?.pirai || 12);
   const [khariRate, setKhariRate] = useState(shop.spellarRates?.khari || 35);
 
@@ -26,15 +34,22 @@ export default function Settings() {
   const [ownerName, setOwnerName] = useState(shop.ownerName || 'Bhaiya');
   const [shopAddress, setShopAddress] = useState(shop.address || 'Main Market Road, Ward 4');
 
+  // Form State: Team Member Add
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState('operator');
+
   // Stock Adjustment State
   const [selectedStockItem, setSelectedStockItem] = useState(null);
   const [stockDelta, setStockDelta] = useState('');
 
   const [savedAlert, setSavedAlert] = useState(false);
 
-  // Save All Rates
+  // Save Rates
   const handleSaveRates = (e) => {
     e.preventDefault();
+    if (!hasPermission('changeRates')) return;
+
     updateShopRates({
       chakkiRates: {
         pisai: parseFloat(pisaiRate) || 0,
@@ -62,6 +77,24 @@ export default function Settings() {
     setTimeout(() => setSavedAlert(false), 3000);
   };
 
+  // Add Member
+  const handleAddMember = (e) => {
+    e.preventDefault();
+    if (!newMemberPhone || !newMemberName) return;
+    addTeamMember(newMemberPhone.replace(/\D/g, ''), newMemberName.trim(), newMemberRole);
+    setNewMemberName('');
+    setNewMemberPhone('');
+  };
+
+  // SMS Settings Toggle
+  const handleSmsToggle = (key) => {
+    if (!hasPermission('smsSettings')) return;
+    const cur = shop.smsSettings || {};
+    updateSmsSettings({
+      [key]: !cur[key]
+    });
+  };
+
   // Stock Adjustment
   const handleStockUpdate = (e) => {
     e.preventDefault();
@@ -71,12 +104,20 @@ export default function Settings() {
     setStockDelta('');
   };
 
+  // Logout Handler
+  const handleLogout = async () => {
+    if (window.confirm('Kya aap logout karna chahte hain?')) {
+      await logoutUser();
+      logout();
+    }
+  };
+
   // Export JSON Backup
   const handleExportBackup = () => {
     const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(fullStore, null, 2));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `chakkibook_v2_backup_${new Date().toISOString().split('T')[0]}.json`);
+    downloadAnchor.setAttribute('download', `chakkibook_backup_${new Date().toISOString().split('T')[0]}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -84,9 +125,37 @@ export default function Settings() {
 
   return (
     <div className="app-container">
+      {/* Top Profile Card */}
+      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--card-bg)' }}>
+        <div>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Logged In ({userRole.toUpperCase()})
+          </span>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: '2px 0 0 0' }}>
+            {currentUser?.email?.split('@')[0] || shop.phone}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          style={{
+            minHeight: '44px',
+            padding: '0.5rem 1rem',
+            borderRadius: '0.5rem',
+            backgroundColor: '#ef4444',
+            color: '#fff',
+            border: 'none',
+            fontWeight: '700',
+            cursor: 'pointer'
+          }}
+        >
+          🚪 Logout
+        </button>
+      </div>
+
       <div className="section-header">
-        <span>⚙️ Rates & Shop Settings</span>
-        <span className="section-badge">Master Rates</span>
+        <span>⚙️ Settings & Team Control</span>
+        <span className="section-badge">{userRole} mode</span>
       </div>
 
       {savedAlert && (
@@ -102,185 +171,292 @@ export default function Settings() {
             border: '1px solid var(--success)'
           }}
         >
-          ✅ Rates & Settings Save ho gaye!
+          ✅ Settings Save ho gaye!
         </div>
       )}
 
-      <form onSubmit={handleSaveRates} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {/* 1. Chakki Rates */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="section-header" style={{ marginBottom: '2px' }}>
-            <span>🌾 Chakki Rates (Pisai & Kadda)</span>
-          </div>
-
-          <div>
-            <label className="input-label">Pisai Rate (₹ per Kg)</label>
-            <input
-              type="number"
-              step="0.5"
-              className="form-input"
-              value={pisaiRate}
-              onChange={(e) => setPisaiRate(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label className="input-label">Kadda Standard Base (Kg)</label>
-            <input
-              type="number"
-              step="1"
-              className="form-input"
-              value={kaddaPer}
-              onChange={(e) => setKaddaPer(e.target.value)}
-              placeholder="e.g. 40 (1 Mann)"
-              required
-            />
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-              Standard 40kg (1 Mann) par kitna kadda kata jata hai
-            </span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-            <div>
-              <label className="input-label" style={{ fontSize: '0.75rem' }}>
-                🌾 Gehun (Wheat)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                className="form-input"
-                value={kaddaWheat}
-                onChange={(e) => setKaddaWheat(e.target.value)}
-                placeholder="1"
-                required
-              />
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>kg / {kaddaPer}kg</span>
-            </div>
-
-            <div>
-              <label className="input-label" style={{ fontSize: '0.75rem' }}>
-                🧆 Dana (Chana)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                className="form-input"
-                value={kaddaDana}
-                onChange={(e) => setKaddaDana(e.target.value)}
-                placeholder="1.5"
-                required
-              />
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>kg / {kaddaPer}kg</span>
-            </div>
-
-            <div>
-              <label className="input-label" style={{ fontSize: '0.75rem' }}>
-                🌽 Makka (Maize)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                className="form-input"
-                value={kaddaMaize}
-                onChange={(e) => setKaddaMaize(e.target.value)}
-                placeholder="1"
-                required
-              />
-              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>kg / {kaddaPer}kg</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Spellar Rates */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="section-header" style={{ marginBottom: '2px' }}>
-            <span>🫒 Spellar Rates (Pirai & Khali)</span>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div>
-              <label className="input-label">🫒 Pirai Charge (₹/kg)</label>
-              <input
-                type="number"
-                step="0.5"
-                className="form-input"
-                value={piraiRate}
-                onChange={(e) => setPiraiRate(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="input-label">📦 Khari Bikri Rate (₹/kg)</label>
-              <input
-                type="number"
-                step="0.5"
-                className="form-input"
-                value={khariRate}
-                onChange={(e) => setKhariRate(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Shop Information */}
+      {/* 1. SMS Settings */}
+      {hasPermission('smsSettings') && (
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="section-header" style={{ marginBottom: '2px' }}>
-            <span>🏪 Shop Profile</span>
+            <span>📱 SMS Auto-Notifications</span>
+            <span className="section-badge" style={{ background: '#22c55e', color: '#fff' }}>Free Native</span>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+            Jab bori jama ho ya pisai complete ho, aapke phone se customer ko auto SMS composer trigger hoga.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem', fontWeight: '700', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={shop.smsSettings?.enabled ?? true}
+                onChange={() => handleSmsToggle('enabled')}
+                style={{ width: '20px', height: '20px' }}
+              />
+              <span>📱 Master SMS Enable (All Notifications)</span>
+            </label>
+
+            <div style={{ paddingLeft: '1.75rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  disabled={!shop.smsSettings?.enabled}
+                  checked={shop.smsSettings?.onDropOff ?? true}
+                  onChange={() => handleSmsToggle('onDropOff')}
+                />
+                <span>🌾 Bori Jama Hone Par (Drop-off)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  disabled={!shop.smsSettings?.enabled}
+                  checked={shop.smsSettings?.onDone ?? true}
+                  onChange={() => handleSmsToggle('onDone')}
+                />
+                <span>✅ Pisai/Pirai Complete Hone Par (Done)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  disabled={!shop.smsSettings?.enabled}
+                  checked={shop.smsSettings?.onPickedUp ?? true}
+                  onChange={() => handleSmsToggle('onPickedUp')}
+                />
+                <span>🧾 Maal Le Jaane Par (Picked Up)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Team Control / Operators (Owner Only) */}
+      {hasPermission('manageMembers') && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="section-header" style={{ marginBottom: '2px' }}>
+            <span>👥 Team Members & Operators</span>
+            <span className="section-badge">{members.length + 1} members</span>
           </div>
 
-          <div>
-            <label className="input-label">Dukan ka Naam (Shop Name)</label>
-            <input
-              type="text"
-              className="form-input"
-              value={shopName}
-              onChange={(e) => setShopName(e.target.value)}
-              required
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '0.5rem' }}>
+              <div>
+                <strong>{shop.ownerName || 'Owner'} (Aap)</strong>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{shop.phone} • Owner</div>
+              </div>
+              <span className="section-badge" style={{ background: '#eab308', color: '#000' }}>OWNER</span>
+            </div>
+
+            {members.map((m) => (
+              <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.03)', borderRadius: '0.5rem' }}>
+                <div>
+                  <strong>{m.name}</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.phone} • {m.role}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeTeamMember(m.id)}
+                  style={{ background: '#991b1b', color: '#fff', border: 'none', borderRadius: '0.35rem', padding: '4px 8px', fontSize: '0.75rem', cursor: 'pointer' }}
+                >
+                  🗑️ Hataayein
+                </button>
+              </div>
+            ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          {/* Add Member Form */}
+          <form onSubmit={handleAddMember} style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '700' }}>➕ Naya Operator/Member Jodein</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Naam (e.g. Raju)"
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+                className="form-input"
+                required
+              />
+              <input
+                type="tel"
+                placeholder="10-digit Mobile"
+                maxLength="10"
+                value={newMemberPhone}
+                onChange={(e) => setNewMemberPhone(e.target.value)}
+                className="form-input"
+                required
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={newMemberRole}
+                onChange={(e) => setNewMemberRole(e.target.value)}
+                className="form-input"
+                style={{ flex: 1 }}
+              >
+                <option value="operator">Operator (Add & Finish Entries)</option>
+                <option value="viewer">Viewer (Only View Data)</option>
+              </select>
+              <button type="submit" className="big-btn" style={{ width: 'auto', minWidth: '100px', minHeight: '44px' }}>
+                + Add Member
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* 3. Rates Form */}
+      {hasPermission('changeRates') && (
+        <form onSubmit={handleSaveRates} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Chakki Rates */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="section-header" style={{ marginBottom: '2px' }}>
+              <span>🌾 Chakki Rates (Pisai & Kadda)</span>
+            </div>
+
             <div>
-              <label className="input-label">Owner Naam</label>
+              <label className="input-label">Pisai Rate (₹ per Kg)</label>
+              <input
+                type="number"
+                step="0.5"
+                className="form-input"
+                value={pisaiRate}
+                onChange={(e) => setPisaiRate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="input-label">Kadda Standard Base (Kg)</label>
+              <input
+                type="number"
+                step="1"
+                className="form-input"
+                value={kaddaPer}
+                onChange={(e) => setKaddaPer(e.target.value)}
+                placeholder="e.g. 40 (1 Mann)"
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+              <div>
+                <label className="input-label" style={{ fontSize: '0.75rem' }}>Gehun (Wheat)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="form-input"
+                  value={kaddaWheat}
+                  onChange={(e) => setKaddaWheat(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="input-label" style={{ fontSize: '0.75rem' }}>Dana (Chana)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="form-input"
+                  value={kaddaDana}
+                  onChange={(e) => setKaddaDana(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="input-label" style={{ fontSize: '0.75rem' }}>Makka (Maize)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="form-input"
+                  value={kaddaMaize}
+                  onChange={(e) => setKaddaMaize(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Spellar Rates */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="section-header" style={{ marginBottom: '2px' }}>
+              <span>🫒 Spellar Rates (Pirai & Khali)</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label className="input-label">Pirai Charge (₹/kg)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  className="form-input"
+                  value={piraiRate}
+                  onChange={(e) => setPiraiRate(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Khari Bikri Rate (₹/kg)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  className="form-input"
+                  value={khariRate}
+                  onChange={(e) => setKhariRate(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Shop Profile */}
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="section-header" style={{ marginBottom: '2px' }}>
+              <span>🏪 Shop Profile</span>
+            </div>
+
+            <div>
+              <label className="input-label">Dukan ka Naam</label>
               <input
                 type="text"
                 className="form-input"
-                value={ownerName}
-                onChange={(e) => setOwnerName(e.target.value)}
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                required
               />
             </div>
 
-            <div>
-              <label className="input-label">Mobile Number</label>
-              <input
-                type="tel"
-                className="form-input"
-                value={shopPhone}
-                onChange={(e) => setShopPhone(e.target.value)}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label className="input-label">Owner Naam</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="input-label">Mobile Number</label>
+                <input
+                  type="tel"
+                  className="form-input"
+                  value={shopPhone}
+                  onChange={(e) => setShopPhone(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="input-label">Pata / Address</label>
-            <input
-              type="text"
-              className="form-input"
-              value={shopAddress}
-              onChange={(e) => setShopAddress(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* SAVE BUTTON */}
-        <button type="submit" className="big-btn">
-          <span>💾</span>
-          <span>SAVE RATES & SETTINGS</span>
-        </button>
-      </form>
+          <button type="submit" className="big-btn">
+            <span>💾 SAVE ALL SETTINGS</span>
+          </button>
+        </form>
+      )}
 
       {/* 4. Spellar Stock Overview */}
       <section>
@@ -303,34 +479,31 @@ export default function Settings() {
             >
               <div>
                 <strong style={{ fontSize: '1rem' }}>{item.name}</strong>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Unit: {item.unit}
-                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Unit: {item.unit}</div>
               </div>
 
               <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div className="big-number" style={{ fontSize: '1.4rem' }}>
                   {item.stock} <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{item.unit}</span>
                 </div>
-                <button
-                  type="button"
-                  className="btn-secondary-action"
-                  style={{ width: 'auto', padding: '4px 10px', height: '36px', minHeight: '36px', fontSize: '0.8rem' }}
-                  onClick={() => setSelectedStockItem(item)}
-                >
-                  ✏️ Adjust
-                </button>
+                {hasPermission('adjustStock') && (
+                  <button
+                    type="button"
+                    className="btn-secondary-action"
+                    style={{ width: 'auto', padding: '4px 10px', height: '36px', minHeight: '36px', fontSize: '0.8rem' }}
+                    onClick={() => setSelectedStockItem(item)}
+                  >
+                    ✏️ Adjust
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Stock Adjustment Dialog */}
         {selectedStockItem && (
           <div className="card" style={{ marginTop: '10px', background: 'var(--primary-light)' }}>
-            <h4 style={{ fontSize: '0.95rem', marginBottom: '8px' }}>
-              Stock Adjust: {selectedStockItem.name}
-            </h4>
+            <h4 style={{ fontSize: '0.95rem', marginBottom: '8px' }}>Stock Adjust: {selectedStockItem.name}</h4>
             <form onSubmit={handleStockUpdate} style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="number"
@@ -358,24 +531,22 @@ export default function Settings() {
         )}
       </section>
 
-      {/* 5. Data Backup & Export */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <div className="section-header" style={{ marginBottom: '2px' }}>
-          <span>💾 Data Backup & Suraksha</span>
+      {/* Backup */}
+      {hasPermission('exportBackup') && (
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="section-header" style={{ marginBottom: '2px' }}>
+            <span>💾 Data Backup & Suraksha</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleExportBackup}
+            className="btn-secondary-action"
+            style={{ height: '48px', minHeight: '48px' }}
+          >
+            <span>📥 Download JSON Backup</span>
+          </button>
         </div>
-        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-          Apne sabhi grahak khata, pending boris, aur hisab kitab ka safe backup file download karein.
-        </p>
-        <button
-          type="button"
-          onClick={handleExportBackup}
-          className="btn-secondary-action"
-          style={{ height: '48px', minHeight: '48px' }}
-        >
-          <span>📥</span>
-          <span>Download JSON Backup</span>
-        </button>
-      </div>
+      )}
     </div>
   );
 }

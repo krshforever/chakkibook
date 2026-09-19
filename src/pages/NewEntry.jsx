@@ -143,6 +143,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
     let targetCustId = selectedCustomerId;
     let targetCustName = selectedCustomerObj ? selectedCustomerObj.name : customerSearch.trim() || 'Cash Customer';
+    let targetCustPhone = selectedCustomerObj ? selectedCustomerObj.phone : '';
 
     // 1. Chakki Mode Entry
     if (activeMode === 'chakki') {
@@ -156,6 +157,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         type: 'pisai',
         customerId: targetCustId,
         customerName: targetCustName,
+        customerPhone: targetCustPhone,
         grainType,
         inputWeight: weightNum,
         kaddaDeducted: effectiveKadda,
@@ -184,6 +186,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           type: 'pirai',
           customerId: targetCustId,
           customerName: targetCustName,
+          customerPhone: targetCustPhone,
           grainType: 'Sarson',
           inputWeight: weightNum,
           kaddaDeducted: 0,
@@ -209,6 +212,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           type: 'khari_sale',
           customerId: targetCustId,
           customerName: targetCustName,
+          customerPhone: targetCustPhone,
           grainType: 'Khali',
           inputWeight: weightNum,
           kaddaDeducted: 0,
@@ -912,7 +916,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
 
               <div>
-                <label className="input-label">Mobile Number (Optional)</label>
+                <label className="input-label">Mobile Number (📱 Auto-SMS ke liye zaroori)</label>
                 <input
                   type="tel"
                   className="form-input"
