@@ -2,13 +2,10 @@ import React, { useState } from 'react';
 import { 
   Wheat, 
   Droplets, 
-  TrendingUp, 
   Clock, 
   CheckCircle2, 
   PlusCircle, 
   Search, 
-  Coins, 
-  Scale, 
   BookOpen, 
   ChevronRight
 } from 'lucide-react';
@@ -117,21 +114,21 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
   return (
     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '600px', margin: '0 auto' }}>
       
-      {/* 1. Hero Summary Card (Minimalist Clean Design) */}
+      {/* 1. Hero Summary Card (High-Contrast Shop Floor Edition) */}
       <section style={{
         backgroundColor: '#ffffff',
-        border: '1px solid #e2e8f0',
+        border: '1.5px solid #cbd5e1',
         borderRadius: '1rem',
         padding: '1.25rem',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.04)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         boxSizing: 'border-box'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {dateFilter === 'aaj' ? 'Aaj Ka Summary' : (dateFilter === 'kal' ? 'Kal Ka Summary' : 'Summary')} • {activeMode.toUpperCase()}
           </div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {activeMode === 'chakki' ? <Wheat size={14} /> : <Droplets size={14} />}
+          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: activeMode === 'chakki' ? '#d97706' : '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {activeMode === 'chakki' ? <Wheat size={16} /> : <Droplets size={16} />}
             <span>{activeMode === 'chakki' ? 'Atta & Dana' : 'Sarson Tel'}</span>
           </div>
         </div>
@@ -139,59 +136,59 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'left' }}>
           {/* Income */}
           <div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>
+            <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700, marginBottom: '2px' }}>
               Kul Kamai
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
-              ₹{totalKamai}
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#020617', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
+              ₹ {totalKamai}
             </div>
           </div>
 
           {/* Weight */}
           <div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>
+            <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700, marginBottom: '2px' }}>
               {activeMode === 'chakki' ? 'Pisai' : 'Pirai'}
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
-              {totalKg} <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>kg</span>
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#020617', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
+              {totalKg} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>kg</span>
             </div>
           </div>
 
           {/* Udhar */}
           <div>
-            <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 600, marginBottom: '2px' }}>
+            <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 700, marginBottom: '2px' }}>
               Baki Udhar
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#dc2626', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
-              ₹{totalUdhar}
+            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#dc2626', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
+              ₹ {totalUdhar}
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. Quick Action Bar */}
+      {/* 2. Quick Action Bar - 52px Touch Target */}
       <section style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
         <button
           type="button"
           onClick={() => setActiveTab('entry')}
           style={{
-            height: '48px',
+            height: '52px',
             backgroundColor: '#d97706',
             color: '#ffffff',
             border: 'none',
             borderRadius: '0.75rem',
-            fontSize: '0.92rem',
-            fontWeight: 700,
+            fontSize: '0.95rem',
+            fontWeight: 800,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            boxShadow: '0 4px 12px rgba(217, 119, 6, 0.25)',
+            boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)',
             transition: 'all 0.15s ease'
           }}
         >
-          <PlusCircle size={18} />
+          <PlusCircle size={20} />
           <span>+ Nayi Bori Entry</span>
         </button>
 
@@ -199,13 +196,13 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           type="button"
           onClick={() => setActiveTab('khata')}
           style={{
-            height: '48px',
+            height: '52px',
             backgroundColor: '#ffffff',
-            color: '#0f172a',
-            border: '1px solid #e2e8f0',
+            color: '#020617',
+            border: '1.5px solid #cbd5e1',
             borderRadius: '0.75rem',
-            fontSize: '0.92rem',
-            fontWeight: 700,
+            fontSize: '0.95rem',
+            fontWeight: 800,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
@@ -214,7 +211,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
             transition: 'all 0.15s ease'
           }}
         >
-          <BookOpen size={18} color="#64748b" />
+          <BookOpen size={20} color="#475569" />
           <span>Grahak Khata</span>
         </button>
       </section>
@@ -222,7 +219,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
       {/* 3. Search & Date Filter Triggers */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ position: 'relative', width: '100%' }}>
-          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+          <Search size={18} color="#475569" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
             placeholder="Search grahak name, mobile, grain..."
@@ -230,21 +227,22 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: '100%',
-              height: '44px',
-              padding: '0 14px 0 40px',
+              height: '48px',
+              padding: '0 14px 0 42px',
               borderRadius: '0.75rem',
-              border: '1px solid #e2e8f0',
+              border: '1.5px solid #cbd5e1',
               backgroundColor: '#ffffff',
-              fontSize: '0.88rem',
-              color: '#0f172a',
+              fontSize: '0.92rem',
+              color: '#020617',
+              fontWeight: 600,
               outline: 'none',
               boxSizing: 'border-box'
             }}
           />
         </div>
 
-        {/* Minimal Underline Filter Tabs */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', gap: '16px', paddingBottom: '4px' }}>
+        {/* Minimal Filter Tabs - 44px Height */}
+        <div style={{ display: 'flex', borderBottom: '1.5px solid #cbd5e1', gap: '16px', paddingBottom: '4px' }}>
           {[
             { id: 'aaj', label: 'Aaj' },
             { id: 'kal', label: 'Kal' },
@@ -258,11 +256,11 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
               style={{
                 background: 'none',
                 border: 'none',
-                borderBottom: dateFilter === tab.id ? '2px solid #d97706' : '2px solid transparent',
+                borderBottom: dateFilter === tab.id ? '2.5px solid #d97706' : '2.5px solid transparent',
                 paddingBottom: '8px',
-                color: dateFilter === tab.id ? '#d97706' : '#64748b',
-                fontSize: '0.82rem',
-                fontWeight: dateFilter === tab.id ? 700 : 500,
+                color: dateFilter === tab.id ? '#d97706' : '#475569',
+                fontSize: '0.85rem',
+                fontWeight: dateFilter === tab.id ? 800 : 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
               }}
@@ -276,8 +274,8 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
       {/* 4. Pending Bori Queue */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Clock size={16} color="#d97706" />
+          <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#020617', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Clock size={18} color="#d97706" />
             <span>Pending Bori Queue ({pendingBoris.length})</span>
           </h2>
         </div>
@@ -285,62 +283,69 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
         {pendingBoris.length === 0 ? (
           <div style={{
             backgroundColor: '#ffffff',
-            border: '1px solid #e2e8f0',
+            border: '1.5px solid #cbd5e1',
             borderRadius: '0.85rem',
-            padding: '1.25rem',
+            padding: '1.5rem',
             textAlign: 'center',
-            color: '#64748b',
-            fontSize: '0.85rem'
+            color: '#475569',
+            fontSize: '0.88rem',
+            fontWeight: 600
           }}>
             Koi pending bori nahi hai. Sabhi complete hain!
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {pendingBoris.map((b) => (
               <div
                 key={b.id}
                 style={{
                   backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderLeft: '4px solid #f59e0b',
+                  border: '1.5px solid #cbd5e1',
+                  borderLeft: '5px solid #f59e0b',
                   borderRadius: '0.75rem',
-                  padding: '12px 14px',
+                  padding: '14px 16px',
                   display: 'flex',
                   justifyContent: 'space-between',
-                  alignItems: 'center'
+                  alignItems: 'center',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
                 }}
               >
                 <div>
                   <div
                     onClick={() => handleCustomerClick(b.customerId, b.customerName)}
-                    style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ fontSize: '1rem', fontWeight: 800, color: '#020617', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
                     <span>{b.customerName}</span>
-                    <ChevronRight size={14} color="#94a3b8" />
+                    <ChevronRight size={16} color="#475569" />
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
-                    <span style={{ fontWeight: 700, color: '#0f172a' }}>{b.inputWeight}kg</span> {b.grainType} • ₹{b.amount} ({getRelativeTime(b.createdAt)})
+                  <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: '3px', fontWeight: 600 }}>
+                    <span style={{ fontWeight: 800, color: '#020617' }}>{b.inputWeight} kg</span> {b.grainType} • ₹ {b.amount} ({getRelativeTime(b.createdAt)})
                   </div>
                 </div>
 
+                {/* Done Trigger - 48px Inviolable Touch Target */}
                 <button
                   type="button"
                   onClick={() => markBoriDone(b.id)}
                   style={{
+                    height: '48px',
+                    minWidth: '96px',
                     backgroundColor: '#16a34a',
                     color: '#ffffff',
                     border: 'none',
-                    borderRadius: '0.5rem',
-                    padding: '6px 12px',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
+                    borderRadius: '0.65rem',
+                    padding: '0 16px',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 3px 8px rgba(22, 163, 74, 0.3)'
                   }}
                 >
-                  <CheckCircle2 size={14} />
+                  <CheckCircle2 size={18} />
                   <span>Done</span>
                 </button>
               </div>
@@ -351,24 +356,24 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
 
       {/* 5. Completed Register */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <h2 style={{ fontSize: '0.92rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+        <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#020617', margin: 0 }}>
           Completed Register ({filteredCompletedBoris.length})
         </h2>
 
         {filteredCompletedBoris.length === 0 ? (
-          <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '1rem', textAlign: 'center', color: '#64748b', fontSize: '0.82rem' }}>
+          <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '0.85rem', padding: '1.25rem', textAlign: 'center', color: '#475569', fontSize: '0.85rem', fontWeight: 600 }}>
             Is filter me koi entry nahi hai.
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {filteredCompletedBoris.map((b) => (
               <div
                 key={b.id}
                 style={{
                   backgroundColor: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.65rem',
-                  padding: '10px 14px',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '0.75rem',
+                  padding: '12px 14px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center'
@@ -377,22 +382,22 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
                 <div>
                   <div
                     onClick={() => handleCustomerClick(b.customerId, b.customerName)}
-                    style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', cursor: 'pointer' }}
+                    style={{ fontSize: '0.92rem', fontWeight: 700, color: '#020617', cursor: 'pointer' }}
                   >
                     {b.customerName}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                    {b.inputWeight}kg {b.grainType} • {b.date || getRelativeTime(b.createdAt)}
+                  <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 500 }}>
+                    {b.inputWeight} kg {b.grainType} • {b.date || getRelativeTime(b.createdAt)}
                   </div>
                 </div>
 
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{b.amount}
+                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#020617', fontVariantNumeric: 'tabular-nums' }}>
+                    ₹ {b.amount}
                   </div>
                   <div style={{
-                    fontSize: '0.68rem',
-                    fontWeight: 600,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
                     color: b.paymentMode === 'credit' ? '#dc2626' : '#16a34a'
                   }}>
                     {b.paymentMode === 'credit' ? 'Udhar' : 'Paid'}
