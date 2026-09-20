@@ -1,4 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Scale, 
+  Sparkles, 
+  Package, 
+  Warehouse, 
+  User, 
+  Plus, 
+  Search, 
+  MapPin, 
+  Phone, 
+  Check, 
+  Coins, 
+  CreditCard, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  Droplets, 
+  Droplet, 
+  Wheat, 
+  X, 
+  AlertCircle,
+  Share2,
+  ShoppingCart,
+  UserPlus
+} from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function NewEntry({ setActiveTab, initialCustomerId }) {
@@ -35,7 +59,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const [khaliOutput, setKhaliOutput] = useState('');
 
   // Owner Stock Fields
-  const [stockType, setStockType] = useState('purchase'); // 'purchase' (buy sarson) | 'oil_sale' | 'khari_sale'
+  const [stockType, setStockType] = useState('purchase'); // 'purchase' | 'oil_sale' | 'khari_sale'
   const [stockWeight, setStockWeight] = useState('');
   const [stockRate, setStockRate] = useState(55);
   const [stockNotes, setStockNotes] = useState('');
@@ -262,17 +286,17 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           : khariSaleAmount;
 
       const shareText =
-        `🌾 *${shop.name}* Receipt\n` +
+        `*${shop.name || 'Chakkibook'}* Slip\n` +
         `------------------------\n` +
         `Grahak: ${targetCustName}\n` +
-        `Item: ${activeMode === 'chakki' ? `🌾 ${grainType} Pisai` : spellarSubMode === 'pirai' ? '🫒 Sarson Pirai' : '📦 Khali Bikri'}\n` +
+        `Item: ${activeMode === 'chakki' ? `${grainType} Pisai` : spellarSubMode === 'pirai' ? 'Sarson Pirai' : 'Khali Bikri'}\n` +
         `Vazan: ${weightNum} kg\n` +
         (activeMode === 'chakki' ? `Kadda: ${effectiveKadda} kg | Atta: ${outputWeight} kg\n` : '') +
         (spellarSubMode === 'pirai' && oilOutput ? `Tel Nikla: ${oilOutput} L | Khali: ${khaliOutput} kg\n` : '') +
         `*Kul Rashi: ₹${finalAmount}*\n` +
         `Payment: ${paymentMode.toUpperCase()}\n` +
-        `Status: ${status === 'done' ? '✅ Taiyar / Complete' : '📦 Bori Jama (Pending)'}\n` +
-        `Dhanyawad! 🙏`;
+        `Status: ${status === 'done' ? 'Taiyar / Complete' : 'Bori Jama (Queue)'}\n` +
+        `Dhanyawad!`;
 
       if (window.confirm('Entry Save ho gayi! Kya WhatsApp par slip bhejna chahte hain?')) {
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
@@ -285,39 +309,52 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   return (
     <div className="app-container">
       {/* Header Banner */}
-      <div className="section-header">
-        <span>
-          {activeMode === 'chakki' ? '🌾 Nayi Bori Entry (Chakki)' : '🫒 Nayi Entry (Spellar)'}
+      <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {activeMode === 'chakki' ? (
+            <Scale size={18} style={{ color: 'var(--primary)' }} />
+          ) : (
+            <Droplets size={18} style={{ color: 'var(--primary)' }} />
+          )}
+          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            {activeMode === 'chakki' ? 'Nayi Bori Entry (Chakki)' : 'Nayi Entry (Spellar Mill)'}
+          </span>
+        </div>
+        <span className="section-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {activeMode === 'chakki' ? <Wheat size={12} /> : <Droplet size={12} />}
+          {activeMode.toUpperCase()}
         </span>
-        <span className="section-badge">{activeMode.toUpperCase()}</span>
       </div>
 
       {/* Spellar Sub-Toggle if Spellar mode is active */}
       {activeMode === 'spellar' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '4px' }}>
           <button
             type="button"
             className={`pill-btn ${spellarSubMode === 'pirai' ? 'active' : ''}`}
             onClick={() => setSpellarSubMode('pirai')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            <span>🫒</span>
+            <Droplets size={15} />
             <span>Pirai</span>
           </button>
           <button
             type="button"
             className={`pill-btn ${spellarSubMode === 'khari_sale' ? 'active' : ''}`}
             onClick={() => setSpellarSubMode('khari_sale')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            <span>📦</span>
-            <span>Khari Sell</span>
+            <Package size={15} />
+            <span>Khari Bikri</span>
           </button>
           <button
             type="button"
             className={`pill-btn ${spellarSubMode === 'owner_stock' ? 'active' : ''}`}
             onClick={() => setSpellarSubMode('owner_stock')}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
-            <span>🏪</span>
-            <span>Own Stock</span>
+            <Warehouse size={15} />
+            <span>Apna Stock</span>
           </button>
         </div>
       )}
@@ -327,26 +364,41 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         
         {/* Customer Search & Select (Not needed for Owner Stock) */}
         {!(activeMode === 'spellar' && spellarSubMode === 'owner_stock') && (
-          <div className="card" style={{ position: 'relative' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label className="input-label" style={{ margin: 0 }}>
-                👤 Grahak (Customer)
+          <div className="card" style={{ position: 'relative', overflow: 'visible' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label className="input-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={15} style={{ color: 'var(--primary)' }} />
+                <span>Grahak (Customer)</span>
               </label>
               <button
                 type="button"
                 className="section-badge"
-                style={{ border: 'none', cursor: 'pointer', background: 'var(--primary-light)' }}
+                style={{ 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  background: 'var(--primary-light)', 
+                  color: 'var(--primary-dark)',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  padding: '4px 10px' 
+                }}
                 onClick={() => setShowAddCustomerModal(true)}
               >
-                ➕ Naya Grahak
+                <Plus size={13} />
+                <span>Naya Grahak</span>
               </button>
             </div>
 
             <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                <Search size={16} />
+              </div>
               <input
                 type="text"
                 className="form-input"
-                placeholder="🔍 Search grahak naam / phone..."
+                style={{ paddingLeft: '40px', paddingRight: selectedCustomerObj ? '110px' : '14px' }}
+                placeholder="Search grahak naam, phone, ya gaon..."
                 value={customerSearch}
                 onChange={(e) => {
                   setCustomerSearch(e.target.value);
@@ -360,18 +412,31 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                 <div
                   style={{
                     position: 'absolute',
-                    right: '10px',
+                    right: '8px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     fontSize: '0.75rem',
                     background: selectedCustomerObj.balance > 0 ? 'var(--danger-bg)' : 'var(--success-bg)',
                     color: selectedCustomerObj.balance > 0 ? 'var(--danger)' : 'var(--success)',
-                    padding: '2px 8px',
+                    padding: '3px 9px',
                     borderRadius: 'var(--radius-pill)',
-                    fontWeight: 700
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                   }}
                 >
-                  {selectedCustomerObj.balance > 0 ? `Udhar: ₹${selectedCustomerObj.balance}` : 'Clear'}
+                  {selectedCustomerObj.balance > 0 ? (
+                    <>
+                      <ArrowUpRight size={13} />
+                      <span>Udhar: ₹{selectedCustomerObj.balance}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={13} />
+                      <span>Clear</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -381,17 +446,16 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div
                 style={{
                   position: 'absolute',
-                  top: '100%',
+                  top: 'calc(100% + 4px)',
                   left: '0',
                   right: '0',
                   background: 'var(--bg-elevated)',
                   border: '1.5px solid var(--card-border)',
                   borderRadius: 'var(--radius-sm)',
                   boxShadow: 'var(--shadow-lg)',
-                  zIndex: 50,
+                  zIndex: 60,
                   maxHeight: '220px',
-                  overflowY: 'auto',
-                  marginTop: '4px'
+                  overflowY: 'auto'
                 }}
               >
                 {filteredCustomers.map((cust) => (
@@ -403,7 +467,8 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                       cursor: 'pointer',
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      transition: 'background-color 0.15s ease'
                     }}
                     onMouseDown={() => {
                       setSelectedCustomerId(cust.id);
@@ -412,19 +477,40 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                     }}
                   >
                     <div>
-                      <strong style={{ fontSize: '0.95rem' }}>{cust.name}</strong>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        📍 {cust.village || 'Gaon'} • 📱 {cust.phone || 'No phone'}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <User size={14} style={{ color: 'var(--text-muted)' }} />
+                        <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{cust.name}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <MapPin size={11} /> {cust.village || 'Gaon'}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <Phone size={11} /> {cust.phone || 'No phone'}
+                        </span>
                       </div>
                     </div>
                     <div
                       style={{
                         fontSize: '0.85rem',
                         fontWeight: 800,
-                        color: cust.balance > 0 ? 'var(--danger)' : 'var(--success)'
+                        color: cust.balance > 0 ? 'var(--danger)' : 'var(--success)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '2px'
                       }}
                     >
-                      {cust.balance > 0 ? `₹${cust.balance}` : '₹0'}
+                      {cust.balance > 0 ? (
+                        <>
+                          <ArrowUpRight size={13} />
+                          ₹{cust.balance}
+                        </>
+                      ) : (
+                        <>
+                          <Check size={13} />
+                          ₹0
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -440,32 +526,43 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           <>
             {/* Grain Selector Pills */}
             <div className="card">
-              <label className="input-label">🌾 Anaj (Grain Type)</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Wheat size={16} style={{ color: 'var(--primary)' }} />
+                <span>Anaj (Grain Type)</span>
+              </label>
               <div className="pill-grid">
                 {[
-                  { id: 'Wheat', label: '🌾 Wheat' },
-                  { id: 'Dana', label: '🧆 Dana' },
-                  { id: 'Maize', label: '🌽 Maize' },
-                  { id: 'Multi-grain', label: '🥣 Multi-grain' }
-                ].map((g) => (
-                  <button
-                    type="button"
-                    key={g.id}
-                    className={`pill-btn ${grainType === g.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setGrainType(g.id);
-                      setIsKaddaOverridden(false);
-                    }}
-                  >
-                    {g.label}
-                  </button>
-                ))}
+                  { id: 'Wheat', label: 'Wheat (Gehun)', icon: Wheat },
+                  { id: 'Dana', label: 'Dana', icon: Package },
+                  { id: 'Maize', label: 'Maize (Makka)', icon: Scale },
+                  { id: 'Multi-grain', label: 'Multi-grain', icon: Sparkles }
+                ].map((g) => {
+                  const Icon = g.icon;
+                  return (
+                    <button
+                      type="button"
+                      key={g.id}
+                      className={`pill-btn ${grainType === g.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setGrainType(g.id);
+                        setIsKaddaOverridden(false);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Icon size={15} />
+                      <span>{g.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Big Vazan (Weight) Input */}
             <div className="hero-input-container">
-              <div className="hero-input-label">Vazan / Weight (Kg)</div>
+              <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Scale size={16} />
+                <span>Vazan / Weight (Kg)</span>
+              </div>
               <input
                 type="number"
                 step="0.1"
@@ -485,7 +582,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </span>
 
               {/* Quick Preset Weight Pills */}
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '10px', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '12px', justifyContent: 'center', width: '100%' }}>
                 {[
                   { label: '10 kg', val: 10 },
                   { label: '20 kg', val: 20 },
@@ -501,15 +598,16 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                       setIsKaddaOverridden(false);
                     }}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: '1rem',
-                      border: Number(inputWeight) === p.val ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.15)',
-                      backgroundColor: Number(inputWeight) === p.val ? '#d97706' : 'rgba(255,255,255,0.08)',
-                      color: '#fff',
+                      padding: '5px 12px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: Number(inputWeight) === p.val ? '2px solid var(--primary)' : '1px solid var(--card-border)',
+                      backgroundColor: Number(inputWeight) === p.val ? 'var(--primary)' : 'var(--bg-elevated)',
+                      color: Number(inputWeight) === p.val ? '#ffffff' : 'var(--text-main)',
                       fontSize: '0.78rem',
                       fontWeight: '700',
                       cursor: 'pointer',
-                      whiteSpace: 'nowrap'
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     {p.label}
@@ -519,9 +617,12 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             </div>
 
             {/* Rate & Kadda Config Bar */}
-            <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label className="input-label">Pisai Rate (₹/kg)</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Coins size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Pisai Rate (₹/kg)</span>
+                </label>
                 <input
                   type="number"
                   step="0.5"
@@ -533,8 +634,9 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
 
               <div>
-                <label className="input-label">
-                  Kadda ({kaddaRatePerMann}kg/{kaddaPer}kg)
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Scale size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Kadda ({kaddaRatePerMann}kg/{kaddaPer}kg)</span>
                 </label>
                 <input
                   type="number"
@@ -553,15 +655,24 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             {/* Auto-Calculation Box */}
             <div className="calc-summary-box">
               <div className="calc-row">
-                <span>🌾 Pisai Charge ({weightNum}kg @ ₹{pisaiRate}):</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Coins size={14} />
+                  <span>Pisai Charge ({weightNum}kg @ ₹{pisaiRate}):</span>
+                </span>
                 <strong>₹ {chakkiAmount}</strong>
               </div>
               <div className="calc-row">
-                <span>✂️ Kadda Deducted:</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Scale size={14} />
+                  <span>Kadda Deducted:</span>
+                </span>
                 <strong>{effectiveKadda} kg</strong>
               </div>
               <div className="calc-row highlight">
-                <span>🥡 Atta Returned (Grahak ko):</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Package size={16} />
+                  <span>Atta Returned (Grahak ko):</span>
+                </span>
                 <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
                   {outputWeight} kg
                 </span>
@@ -570,43 +681,58 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
             {/* Status Selector: Bori Drop-off vs Done Now */}
             <div className="card">
-              <label className="input-label">📦 Bori Status</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Package size={15} style={{ color: 'var(--primary)' }} />
+                <span>Bori Status</span>
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button
                   type="button"
                   className={`pill-btn ${status === 'pending' ? 'active' : ''}`}
                   onClick={() => setStatus('pending')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <span>📦 Bori Drop-off (Queue)</span>
+                  <Package size={15} />
+                  <span>Bori Jama (Queue)</span>
                 </button>
                 <button
                   type="button"
                   className={`pill-btn ${status === 'done' ? 'active' : ''}`}
                   onClick={() => setStatus('done')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <span>✅ Abhi Pisai (Done Now)</span>
+                  <Check size={15} />
+                  <span>Abhi Pisai (Done)</span>
                 </button>
               </div>
             </div>
 
             {/* Payment Mode Pills */}
             <div className="card">
-              <label className="input-label">💵 Payment Mode</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={15} style={{ color: 'var(--primary)' }} />
+                <span>Payment Mode</span>
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'cash', label: '🟢 Cash' },
-                  { id: 'upi', label: '📱 UPI' },
-                  { id: 'credit', label: '🔴 Udhar' }
-                ].map((m) => (
-                  <button
-                    type="button"
-                    key={m.id}
-                    className={`pill-btn ${paymentMode === m.id ? 'active' : ''}`}
-                    onClick={() => setPaymentMode(m.id)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+                  { id: 'cash', label: 'Cash (Nokad)', icon: Coins },
+                  { id: 'upi', label: 'UPI Online', icon: Phone },
+                  { id: 'credit', label: 'Udhar (Dues)', icon: ArrowUpRight }
+                ].map((m) => {
+                  const Icon = m.icon;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      className={`pill-btn ${paymentMode === m.id ? 'active' : ''}`}
+                      onClick={() => setPaymentMode(m.id)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Icon size={14} />
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -614,7 +740,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <input
               type="text"
               className="form-input"
-              placeholder="Notes / Remark (Optional e.g. Mota Aata, Chokar)"
+              placeholder="Notes / Remark (Optional e.g. Mota Atta, Chokar, Urgent)"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -622,13 +748,16 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         )}
 
         {/* =================================================================
-            SPELLAR MODE FORMS
+            SPELLAR MODE FORMS: PIRAI
             ================================================================= */}
         {activeMode === 'spellar' && spellarSubMode === 'pirai' && (
           <>
             {/* Sarson Vazan */}
             <div className="hero-input-container">
-              <div className="hero-input-label">Sarson Vazan / Weight (Kg)</div>
+              <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Droplets size={16} />
+                <span>Sarson Vazan / Weight (Kg)</span>
+              </div>
               <input
                 type="number"
                 step="0.1"
@@ -647,7 +776,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
             {/* Pirai Rate */}
             <div className="card">
-              <label className="input-label">Pirai Rate (₹/kg)</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={14} style={{ color: 'var(--primary)' }} />
+                <span>Pirai Rate (₹/kg)</span>
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -659,9 +791,12 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             </div>
 
             {/* Oil & Khali Output Manual Inputs */}
-            <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label className="input-label">🫒 Tel Output (Litres)</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Droplet size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Tel Output (Litres)</span>
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -673,7 +808,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
 
               <div>
-                <label className="input-label">📦 Khali Output (Kg)</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Package size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Khali Output (Kg)</span>
+                </label>
                 <input
                   type="number"
                   step="0.1"
@@ -688,7 +826,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             {/* Calculation Box */}
             <div className="calc-summary-box">
               <div className="calc-row highlight">
-                <span>🫒 Pirai Charge ({weightNum}kg @ ₹{piraiRate}):</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Coins size={16} />
+                  <span>Pirai Charge ({weightNum}kg @ ₹{piraiRate}):</span>
+                </span>
                 <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
                   ₹ {spellarPiraiAmount}
                 </span>
@@ -697,43 +838,58 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
             {/* Status Selector */}
             <div className="card">
-              <label className="input-label">📦 Status</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Package size={15} style={{ color: 'var(--primary)' }} />
+                <span>Status</span>
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button
                   type="button"
                   className={`pill-btn ${status === 'pending' ? 'active' : ''}`}
                   onClick={() => setStatus('pending')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <span>📦 Sarson Drop-off</span>
+                  <Package size={15} />
+                  <span>Sarson Drop-off</span>
                 </button>
                 <button
                   type="button"
                   className={`pill-btn ${status === 'done' ? 'active' : ''}`}
                   onClick={() => setStatus('done')}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <span>✅ Pirai Ho Gayi (Done)</span>
+                  <Check size={15} />
+                  <span>Pirai Ho Gayi (Done)</span>
                 </button>
               </div>
             </div>
 
             {/* Payment Mode */}
             <div className="card">
-              <label className="input-label">💵 Payment Mode</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={15} style={{ color: 'var(--primary)' }} />
+                <span>Payment Mode</span>
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'cash', label: '🟢 Cash' },
-                  { id: 'upi', label: '📱 UPI' },
-                  { id: 'credit', label: '🔴 Udhar' }
-                ].map((m) => (
-                  <button
-                    type="button"
-                    key={m.id}
-                    className={`pill-btn ${paymentMode === m.id ? 'active' : ''}`}
-                    onClick={() => setPaymentMode(m.id)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+                  { id: 'cash', label: 'Cash (Nokad)', icon: Coins },
+                  { id: 'upi', label: 'UPI Online', icon: Phone },
+                  { id: 'credit', label: 'Udhar (Dues)', icon: ArrowUpRight }
+                ].map((m) => {
+                  const Icon = m.icon;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      className={`pill-btn ${paymentMode === m.id ? 'active' : ''}`}
+                      onClick={() => setPaymentMode(m.id)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Icon size={14} />
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -747,11 +903,16 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           </>
         )}
 
-        {/* SPELLAR: KHARI SELL SUBMODE */}
+        {/* =================================================================
+            SPELLAR: KHARI SELL SUBMODE
+            ================================================================= */}
         {activeMode === 'spellar' && spellarSubMode === 'khari_sale' && (
           <>
             <div className="hero-input-container">
-              <div className="hero-input-label">Khali Vazan / Weight (Kg)</div>
+              <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Package size={16} />
+                <span>Khali Vazan / Weight (Kg)</span>
+              </div>
               <input
                 type="number"
                 step="0.5"
@@ -764,12 +925,15 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                 autoFocus
               />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                Mustard Cake / Khali
+                Mustard Cake / Khali (kg)
               </span>
             </div>
 
             <div className="card">
-              <label className="input-label">Khali Rate (₹/kg)</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={14} style={{ color: 'var(--primary)' }} />
+                <span>Khali Rate (₹/kg)</span>
+              </label>
               <input
                 type="number"
                 step="0.5"
@@ -782,7 +946,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
             <div className="calc-summary-box">
               <div className="calc-row highlight">
-                <span>📦 Kul Rashi (Total):</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Coins size={16} />
+                  <span>Kul Rashi (Total Amount):</span>
+                </span>
                 <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
                   ₹ {khariSaleAmount}
                 </span>
@@ -790,22 +957,30 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             </div>
 
             <div className="card">
-              <label className="input-label">💵 Payment Mode</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={15} style={{ color: 'var(--primary)' }} />
+                <span>Payment Mode</span>
+              </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'cash', label: '🟢 Cash' },
-                  { id: 'upi', label: '📱 UPI' },
-                  { id: 'credit', label: '🔴 Udhar' }
-                ].map((m) => (
-                  <button
-                    type="button"
-                    key={m.id}
-                    className={`pill-btn ${paymentMode === m.id ? 'active' : ''}`}
-                    onClick={() => setPaymentMode(m.id)}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+                  { id: 'cash', label: 'Cash (Nokad)', icon: Coins },
+                  { id: 'upi', label: 'UPI Online', icon: Phone },
+                  { id: 'credit', label: 'Udhar (Dues)', icon: ArrowUpRight }
+                ].map((m) => {
+                  const Icon = m.icon;
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      className={`pill-btn ${paymentMode === m.id ? 'active' : ''}`}
+                      onClick={() => setPaymentMode(m.id)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Icon size={14} />
+                      <span>{m.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -819,37 +994,48 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           </>
         )}
 
-        {/* SPELLAR: OWNER STOCK SUBMODE */}
+        {/* =================================================================
+            SPELLAR: OWNER STOCK SUBMODE
+            ================================================================= */}
         {activeMode === 'spellar' && spellarSubMode === 'owner_stock' && (
           <>
             <div className="card">
-              <label className="input-label">🏪 Stock Transaction Type</label>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Warehouse size={16} style={{ color: 'var(--primary)' }} />
+                <span>Stock Transaction Type</span>
+              </label>
               <div className="pill-grid">
                 {[
-                  { id: 'purchase', label: '🛒 Buy Sarson Seeds' },
-                  { id: 'oil_sale', label: '🫒 Sell Oil' },
-                  { id: 'khari_sale', label: '📦 Sell Khali' }
-                ].map((s) => (
-                  <button
-                    type="button"
-                    key={s.id}
-                    className={`pill-btn ${stockType === s.id ? 'active' : ''}`}
-                    onClick={() => {
-                      setStockType(s.id);
-                      if (s.id === 'purchase') setStockRate(55);
-                      else if (s.id === 'oil_sale') setStockRate(140);
-                      else setStockRate(35);
-                    }}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+                  { id: 'purchase', label: 'Buy Sarson Seeds', icon: ShoppingCart },
+                  { id: 'oil_sale', label: 'Sell Mustard Oil', icon: ArrowUpRight },
+                  { id: 'khari_sale', label: 'Sell Khali Cake', icon: Package }
+                ].map((s) => {
+                  const Icon = s.icon;
+                  return (
+                    <button
+                      type="button"
+                      key={s.id}
+                      className={`pill-btn ${stockType === s.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setStockType(s.id);
+                        if (s.id === 'purchase') setStockRate(55);
+                        else if (s.id === 'oil_sale') setStockRate(140);
+                        else setStockRate(35);
+                      }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    >
+                      <Icon size={14} />
+                      <span>{s.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             <div className="hero-input-container">
-              <div className="hero-input-label">
-                {stockType === 'oil_sale' ? 'Tel Quantity (Litres)' : 'Vazan / Weight (Kg)'}
+              <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Scale size={16} />
+                <span>{stockType === 'oil_sale' ? 'Tel Quantity (Litres)' : 'Vazan / Weight (Kg)'}</span>
               </div>
               <input
                 type="number"
@@ -865,8 +1051,9 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             </div>
 
             <div className="card">
-              <label className="input-label">
-                Rate (₹/{stockType === 'oil_sale' ? 'Litre' : 'Kg'})
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={14} style={{ color: 'var(--primary)' }} />
+                <span>Rate (₹/{stockType === 'oil_sale' ? 'Litre' : 'Kg'})</span>
               </label>
               <input
                 type="number"
@@ -880,7 +1067,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
             <div className="calc-summary-box">
               <div className="calc-row highlight">
-                <span>Total Amount:</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Coins size={16} />
+                  <span>Total Transaction Amount:</span>
+                </span>
                 <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
                   ₹ {stockTotalAmount}
                 </span>
@@ -898,8 +1088,18 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         )}
 
         {/* SINGLE BIG SAVE BUTTON AT BOTTOM */}
-        <button type="submit" className="big-btn" style={{ marginTop: '8px' }}>
-          <span>💾</span>
+        <button 
+          type="submit" 
+          className="big-btn" 
+          style={{ 
+            marginTop: '8px', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: '10px' 
+          }}
+        >
+          <Check size={20} />
           <span>SAVE ENTRY</span>
         </button>
       </form>
@@ -913,7 +1113,8 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(0,0,0,0.65)',
+            backdropFilter: 'blur(4px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -921,11 +1122,27 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             padding: '16px'
           }}
         >
-          <div className="card" style={{ width: '100%', maxWidth: '420px', background: 'var(--bg-elevated)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>➕ Naya Grahak Add Karein</h3>
-            <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px', background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h3 style={{ fontSize: '1.15rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <UserPlus size={18} style={{ color: 'var(--primary)' }} />
+                <span>Naya Grahak Add Karein</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddCustomerModal(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label className="input-label">Grahak ka Naam (Required)</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <User size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Grahak ka Naam (Required)</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
@@ -938,7 +1155,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
 
               <div>
-                <label className="input-label">Gaon / Village (Optional)</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <MapPin size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Gaon / Village (Optional)</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
@@ -949,7 +1169,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
 
               <div>
-                <label className="input-label">Mobile Number (📱 Auto-SMS ke liye zaroori)</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Phone size={14} style={{ color: 'var(--primary)' }} />
+                  <span>Mobile Number (Auto-SMS & WhatsApp)</span>
+                </label>
                 <input
                   type="tel"
                   className="form-input"
@@ -959,17 +1182,23 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                <button type="submit" className="big-btn" style={{ height: '48px', minHeight: '48px' }}>
-                  Grahak Jodein
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <button 
+                  type="submit" 
+                  className="big-btn" 
+                  style={{ height: '48px', minHeight: '48px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Check size={16} />
+                  <span>Grahak Jodein</span>
                 </button>
                 <button
                   type="button"
                   className="btn-secondary-action"
-                  style={{ height: '48px', minHeight: '48px' }}
+                  style={{ height: '48px', minHeight: '48px', width: 'auto', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => setShowAddCustomerModal(false)}
                 >
-                  Cancel
+                  <X size={16} />
+                  <span>Cancel</span>
                 </button>
               </div>
             </form>

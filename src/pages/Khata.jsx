@@ -1,5 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import jsPDF from 'jspdf';
+import { 
+  BookOpen, 
+  UserPlus, 
+  Search, 
+  Phone, 
+  MapPin, 
+  Coins, 
+  Download, 
+  Share2, 
+  CheckCircle2, 
+  ArrowUpRight, 
+  ArrowDownLeft, 
+  X, 
+  Plus,
+  UserCheck
+} from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export default function Khata({ selectedCustomer: initialSelectedCustomer, onClearSelectedCustomer }) {
@@ -38,476 +54,586 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         if (!q) return true;
         return (
           c.name.toLowerCase().includes(q) ||
-          (c.village && c.village.toLowerCase().includes(q)) ||
-          (c.phone && c.phone.includes(q))
+          (c.phone && c.phone.includes(q)) ||
+          (c.village && c.village.toLowerCase().includes(q))
         );
       })
-      .sort((a, b) => {
-        if (b.balance !== a.balance) {
-          return (b.balance || 0) - (a.balance || 0);
-        }
-        return a.name.localeCompare(b.name);
-      });
+      .sort((a, b) => (b.balance || 0) - (a.balance || 0));
   }, [customers, searchQuery]);
 
-  const activeCustomer = customers.find((c) => c.id === activeCustomerId);
+  const activeCustomer = useMemo(() => {
+    return customers.find((c) => c.id === activeCustomerId) || null;
+  }, [customers, activeCustomerId]);
 
-  // All transactions for active customer
-  const customerStatements = useMemo(() => {
-    if (!activeCustomerId) return [];
-    return boris
-      .filter((b) => b.customerId === activeCustomerId)
-      .sort((a, b) => new Date(b.createdAt || b.doneDate || 0) - new Date(a.createdAt || a.date || 0));
-  }, [boris, activeCustomerId]);
+  const activeCustomerBoris = useMemo(() => {
+    if (!activeCustomer) return [];
+    return boris.filter((b) => b.customerId === activeCustomer.id || b.customerName === activeCustomer.name);
+  }, [boris, activeCustomer]);
 
-  // Handle Payment Collection (Jama Rashi)
-  const handleRecordPayment = (e) => {
+  const handlePaymentSubmit = (e) => {
     e.preventDefault();
-    const amountNum = parseFloat(payAmount) || 0;
-    if (!activeCustomer || amountNum <= 0) return;
+    const amt = Number(payAmount);
+    if (!amt || amt <= 0 || !activeCustomer) return;
 
     addBori({
       mode: 'chakki',
-      type: 'payment',
       customerId: activeCustomer.id,
       customerName: activeCustomer.name,
-      customerPhone: activeCustomer.phone || '',
-      grainType: '',
+      customerPhone: activeCustomer.phone,
+      grainType: 'Jama Payment',
       inputWeight: 0,
-      kaddaDeducted: 0,
-      outputWeight: 0,
       rate: 0,
-      amount: amountNum,
+      amount: amt,
       status: 'done',
-      paymentMode: payMode,
-      notes: payNotes.trim() || 'Khata Jama Bhugtan'
+      paymentMode: payMode === 'cash' ? 'cash' : 'upi',
+      notes: payNotes ? `Jama Payment (${payNotes})` : 'Jama Payment'
     });
-
-    const shareText =
-      `🌾 *${shop.name}* Payment Receipt\n` +
-      `------------------------\n` +
-      `Grahak: ${activeCustomer.name}\n` +
-      `Jama Rashi: *₹${amountNum}* (${payMode.toUpperCase()})\n` +
-      `Bacha Hua Udhar: *₹${Math.max(0, (activeCustomer.balance || 0) - amountNum)}*\n` +
-      `Dhanyawad! 🙏`;
 
     setPayAmount('');
     setPayNotes('');
-
-    if (window.confirm(`₹${amountNum} jama ho gaya! WhatsApp receipt share karein?`)) {
-      window.open(
-        `https://api.whatsapp.com/send?phone=${activeCustomer.phone || ''}&text=${encodeURIComponent(shareText)}`,
-        '_blank'
-      );
-    }
   };
 
-  // WhatsApp Reminder
-  const sendWhatsAppReminder = (cust) => {
-    const text =
-      `🌾 *${shop.name}*\n` +
-      `Namaste ${cust.name} ji,\n` +
-      `Aapka total bakaya (udhar) rashi *₹${cust.balance}* hai.\n` +
-      `Kripya samay par bhugtan karein. Dhanyawad! 🙏`;
-
-    window.open(
-      `https://api.whatsapp.com/send?phone=${cust.phone || ''}&text=${encodeURIComponent(text)}`,
-      '_blank'
-    );
-  };
-
-  // PDF Statement Download Generator
-  const exportPDFStatement = () => {
-    if (!activeCustomer) return;
-    const doc = new jsPDF();
-
-    // Header
-    doc.setFontSize(18);
-    doc.setTextColor(217, 119, 6);
-    doc.text(shop.name || 'Chakkibook Flour Mill & Spellar', 14, 20);
-
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(`Mobile: ${shop.phone || 'N/A'} | ${shop.address || 'Main Market'}`, 14, 26);
-
-    doc.setLineWidth(0.5);
-    doc.setDrawColor(217, 119, 6);
-    doc.line(14, 30, 196, 30);
-
-    // Customer Title
-    doc.setFontSize(13);
-    doc.setTextColor(0);
-    doc.text(`GRAHAK KHATA STATEMENT: ${activeCustomer.name.toUpperCase()}`, 14, 40);
-
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text(`Phone: ${activeCustomer.phone || 'N/A'} | Gaon: ${activeCustomer.village || 'N/A'}`, 14, 46);
-    doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 14, 52);
-
-    // Dues Box
-    doc.setFillColor(254, 243, 199);
-    doc.rect(14, 58, 182, 14, 'F');
-    doc.setFontSize(11);
-    doc.setTextColor(180, 83, 9);
-    doc.text(`KUL BACHA HUA UDHAR (TOTAL DUES): RS ${activeCustomer.balance || 0}`, 20, 67);
-
-    // Table Header
-    let y = 82;
-    doc.setFontSize(9);
-    doc.setTextColor(255);
-    doc.setFillColor(30, 41, 59);
-    doc.rect(14, y - 6, 182, 9, 'F');
-    doc.text('Date', 18, y);
-    doc.text('Type / Item', 50, y);
-    doc.text('Qty / Wt', 105, y);
-    doc.text('Payment', 140, y);
-    doc.text('Amount', 170, y);
-
-    // Rows
-    y += 9;
-    doc.setTextColor(30);
-    customerStatements.forEach((st) => {
-      if (y > 270) {
-        doc.addPage();
-        y = 20;
-      }
-      const dStr = new Date(st.createdAt || st.doneDate || Date.now()).toLocaleDateString('en-IN');
-      const typeStr = st.type === 'payment' ? 'Jama Payment' : `${st.mode?.toUpperCase() || ''} ${st.grainType || ''}`;
-      const qtyStr = st.inputWeight ? `${st.inputWeight}kg` : (st.oilOutput ? `${st.oilOutput}L Tel` : '-');
-      const modeStr = st.paymentMode === 'credit' ? 'Udhar' : (st.paymentMode === 'upi' ? 'UPI' : 'Cash');
-      const amtStr = st.type === 'payment' ? `-Rs ${st.amount}` : `+Rs ${st.amount}`;
-
-      doc.text(dStr, 18, y);
-      doc.text(typeStr, 50, y);
-      doc.text(qtyStr, 105, y);
-      doc.text(modeStr, 140, y);
-      doc.text(amtStr, 170, y);
-
-      y += 8;
-    });
-
-    doc.setFontSize(8);
-    doc.setTextColor(120);
-    doc.text('Generated via Chakkibook Smart Ledger App', 14, 285);
-
-    doc.save(`Khata_Statement_${activeCustomer.name.replace(/\s+/g, '_')}.pdf`);
-  };
-
-  // Add Customer Modal Submit
-  const handleAddCustomerSubmit = (e) => {
+  const handleCreateCustomer = (e) => {
     e.preventDefault();
     if (!custName.trim()) return;
 
-    const created = addCustomer({
+    const newCust = addCustomer({
       name: custName.trim(),
       village: custVillage.trim(),
-      phone: custPhone.trim(),
-      balance: 0
+      phone: custPhone.trim()
     });
 
     setCustName('');
     setCustVillage('');
     setCustPhone('');
     setShowAddCust(false);
-    if (created) setActiveCustomerId(created.id);
+    if (newCust && newCust.id) {
+      setActiveCustomerId(newCust.id);
+    }
   };
 
-  const handleBack = () => {
-    setActiveCustomerId(null);
-    if (onClearSelectedCustomer) onClearSelectedCustomer();
+  // Generate PDF Statement
+  const generatePDFStatement = () => {
+    if (!activeCustomer) return;
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text(`${shop.name || 'Chakkibook'} Statement`, 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Grahak: ${activeCustomer.name} (${activeCustomer.village || ''})`, 14, 28);
+    doc.text(`Mobile: ${activeCustomer.phone || 'N/A'}`, 14, 34);
+    doc.text(`Kul Baki Udhar: Rs ${activeCustomer.balance || 0}`, 14, 40);
+
+    doc.line(14, 45, 196, 45);
+
+    doc.setFontSize(11);
+    doc.text('Tareekh', 14, 52);
+    doc.text('Vivran (Details)', 50, 52);
+    doc.text('Rakam (Rs)', 150, 52);
+
+    let y = 60;
+    activeCustomerBoris.forEach((b) => {
+      const dateStr = b.date || (b.createdAt ? b.createdAt.split('T')[0] : '');
+      doc.text(dateStr, 14, y);
+      doc.text(`${b.grainType} (${b.inputWeight || 0}kg)`, 50, y);
+      doc.text(`Rs ${b.amount || 0}`, 150, y);
+      y += 8;
+      if (y > 280) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
+    doc.save(`Khata_${activeCustomer.name.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  // WhatsApp Reminder
+  const sendWhatsAppReminder = () => {
+    if (!activeCustomer || !activeCustomer.phone) {
+      alert('Sahi mobile number nahi mila!');
+      return;
+    }
+    const cleanPhone = activeCustomer.phone.replace(/\D/g, '');
+    const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    const msg = `Namaste ${activeCustomer.name} ji, ${shop.name || 'Atta Chakki'} par aapka kul baki udhar Rs ${activeCustomer.balance || 0} hai. Kripya samay par bhugtan karein. Dhanyawad!`;
+    const url = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
   };
 
   return (
-    <div className="app-container">
-      {!activeCustomer ? (
-        /* 1. Customer List View */
-        <>
-          {/* Dues Header */}
-          <div className="card" style={{ background: 'var(--card-bg)', border: '1px solid var(--danger)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <span style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700, textTransform: 'uppercase' }}>
-                  🔴 Total Market Udhar (Dues)
-                </span>
-                <h2 className="big-number" style={{ color: 'var(--danger)', fontSize: '1.8rem', margin: '2px 0 0 0' }}>
-                  ₹ {totalOutstandingDues.toLocaleString()}
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAddCust(true)}
-                className="big-btn"
-                style={{ width: 'auto', padding: '0.6rem 1rem', minHeight: '44px', fontSize: '0.9rem' }}
-              >
-                <span>➕</span>
-                <span>Naya Grahak</span>
-              </button>
-            </div>
+    <div className="app-container" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      {/* 1. Dues Hero Summary */}
+      <section style={{
+        background: 'linear-gradient(135deg, #7f1d1d, #991b1b)',
+        color: '#ffffff',
+        borderRadius: '1.25rem',
+        padding: '1.25rem',
+        boxShadow: '0 8px 20px rgba(153, 27, 27, 0.25)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Kul Baki Udhar (All Customers)
           </div>
-
-          {/* Search Bar */}
-          <div className="search-bar-wrapper">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              className="search-bar"
-              placeholder="Search naam, gaon, ya mobile number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', marginTop: '2px', fontFamily: "'Outfit', sans-serif" }}>
+            ₹{totalOutstandingDues}
           </div>
+        </div>
 
-          {/* Customer Cards List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {sortedCustomers.map((cust) => {
-              const hasDues = cust.balance > 0;
-              return (
-                <div
-                  key={cust.id}
-                  className="card"
-                  onClick={() => setActiveCustomerId(cust.id)}
-                  style={{
-                    cursor: 'pointer',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderLeft: hasDues ? '5px solid var(--danger)' : '5px solid var(--success)'
-                  }}
-                >
-                  <div>
-                    <strong style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>{cust.name}</strong>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      📍 {cust.village || 'Gaon'} • 📱 {cust.phone || 'No phone'}
-                    </div>
-                  </div>
+        <button
+          type="button"
+          onClick={() => setShowAddCust(true)}
+          style={{
+            backgroundColor: '#ffffff',
+            color: '#991b1b',
+            border: 'none',
+            borderRadius: '0.75rem',
+            padding: '10px 16px',
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+          }}
+        >
+          <UserPlus size={16} />
+          <span>Naya Grahak</span>
+        </button>
+      </section>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <div
-                      style={{
-                        fontFamily: 'var(--font-head)',
-                        fontSize: '1.2rem',
-                        fontWeight: 800,
-                        color: hasDues ? 'var(--danger)' : 'var(--success)'
-                      }}
-                    >
-                      {hasDues ? `₹ ${cust.balance}` : '₹ 0'}
-                    </div>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      {hasDues ? 'Udhar Dues' : '🟢 Clear'} 👉
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      ) : (
-        /* 2. Customer Ledger View */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <button
-            type="button"
-            onClick={handleBack}
-            className="btn-secondary-action"
-            style={{ width: 'auto', alignSelf: 'flex-start', padding: '6px 14px', height: '40px', minHeight: '40px' }}
-          >
-            ← Wapas Grahak List
-          </button>
+      {/* 2. Customer Search Bar */}
+      <section style={{ position: 'relative', width: '100%' }}>
+        <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
+        <input
+          type="text"
+          placeholder="Search grahak name, village, mobile..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: '100%',
+            height: '46px',
+            padding: '0 14px 0 42px',
+            borderRadius: '0.85rem',
+            border: '1.5px solid #cbd5e1',
+            backgroundColor: '#ffffff',
+            fontSize: '0.9rem',
+            color: '#0f172a',
+            outline: 'none',
+            boxSizing: 'border-box'
+          }}
+        />
+      </section>
 
-          {/* Customer Header Card with PDF & WhatsApp buttons */}
-          <div className="card" style={{ background: 'var(--primary-light)', border: '1.5px solid var(--card-border)' }}>
+      {/* 3. Main Khata View: Customer List + Detail Drawer */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {activeCustomer ? (
+          /* Active Customer Detail Drawer */
+          <div style={{
+            backgroundColor: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '1.25rem',
+            padding: '1.25rem',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px'
+          }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h3 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-main)' }}>{activeCustomer.name}</h3>
-                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '3px' }}>
-                  📍 Gaon: <strong>{activeCustomer.village || 'N/A'}</strong> | 📱 Phone: <strong>{activeCustomer.phone || 'N/A'}</strong>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCustomerId(null);
+                    if (onClearSelectedCustomer) onClearSelectedCustomer();
+                  }}
+                  style={{
+                    background: '#f1f5f9',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#475569',
+                    cursor: 'pointer',
+                    marginBottom: '8px'
+                  }}
+                >
+                  ← Wapas Grahak List
+                </button>
+
+                <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  {activeCustomer.name}
+                </h2>
+                <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {activeCustomer.village && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={14} color="#94a3b8" />
+                      {activeCustomer.village}
+                    </span>
+                  )}
+                  {activeCustomer.phone && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Phone size={14} color="#94a3b8" />
+                      {activeCustomer.phone}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  type="button"
-                  onClick={exportPDFStatement}
-                  style={{
-                    background: '#0284c7', color: '#fff', border: 'none', borderRadius: '0.5rem',
-                    padding: '6px 10px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
-                  }}
-                >
-                  📄 PDF Bill
-                </button>
-
-                {activeCustomer.balance > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => sendWhatsAppReminder(activeCustomer)}
-                    style={{
-                      background: '#16a34a', color: '#fff', border: 'none', borderRadius: '0.5rem',
-                      padding: '6px 10px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
-                    }}
-                  >
-                    📲 WhatsApp
-                  </button>
-                )}
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Baki Balance
+                </div>
+                <div style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 800,
+                  color: (activeCustomer.balance || 0) > 0 ? '#ef4444' : '#16a34a',
+                  fontFamily: "'Outfit', sans-serif"
+                }}>
+                  ₹{activeCustomer.balance || 0}
+                </div>
               </div>
             </div>
 
-            <div style={{ marginTop: '12px', borderTop: '1px dashed var(--card-border)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Kul Bacha Hua Udhar (Dues):</span>
-              <span className="big-number" style={{ color: activeCustomer.balance > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '1.6rem' }}>
-                ₹ {activeCustomer.balance || 0}
-              </span>
-            </div>
-          </div>
+            {/* Statement Actions */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={generatePDFStatement}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '0.65rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#334155',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Download size={15} />
+                <span>PDF Statement</span>
+              </button>
 
-          {/* Payment Collection Form */}
-          <div className="card">
-            <div className="section-header">
-              <span>💵 Jama Karein (Collect Payment)</span>
+              <button
+                type="button"
+                onClick={sendWhatsAppReminder}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  backgroundColor: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '0.65rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#16a34a',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Share2 size={15} />
+                <span>WhatsApp Hisab</span>
+              </button>
             </div>
-            <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+
+            {/* Jama Payment Quick Form */}
+            <form onSubmit={handlePaymentSubmit} style={{
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '0.85rem',
+              padding: '12px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px'
+            }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Coins size={16} />
+                <span>Jama Payment Entry (Grahak Rakam Jama Kare)</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="number"
-                  step="1"
-                  min="1"
-                  className="form-input"
-                  placeholder="Rashi (₹) Amount"
+                  placeholder="Rakam (₹)"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   required
+                  style={{
+                    flex: 1,
+                    height: '42px',
+                    padding: '0 12px',
+                    borderRadius: '0.65rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    outline: 'none'
+                  }}
                 />
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
-                  <button
-                    type="button"
-                    className={`pill-btn ${payMode === 'cash' ? 'active' : ''}`}
-                    onClick={() => setPayMode('cash')}
-                  >
-                    Nokad Cash
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${payMode === 'upi' ? 'active' : ''}`}
-                    onClick={() => setPayMode('upi')}
-                  >
-                    UPI
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${payMode === 'credit' ? 'active' : ''}`}
-                    onClick={() => setPayMode('credit')}
-                  >
-                    Udhar
-                  </button>
-                </div>
+                <select
+                  value={payMode}
+                  onChange={(e) => setPayMode(e.target.value)}
+                  style={{
+                    height: '42px',
+                    padding: '0 10px',
+                    borderRadius: '0.65rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    backgroundColor: '#ffffff'
+                  }}
+                >
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI / Online</option>
+                </select>
+                <button
+                  type="submit"
+                  style={{
+                    height: '42px',
+                    padding: '0 16px',
+                    backgroundColor: '#d97706',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '0.65rem',
+                    fontSize: '0.88rem',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Jama
+                </button>
               </div>
-
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Notes / Receipt No (Optional)"
-                value={payNotes}
-                onChange={(e) => setPayNotes(e.target.value)}
-              />
-
-              <button type="submit" className="big-btn" style={{ minHeight: '48px' }}>
-                <span>💰</span>
-                <span>JAMA RASHI (COLLECT PAYMENT)</span>
-              </button>
             </form>
-          </div>
 
-          {/* Transaction History Statement */}
-          <div className="card">
-            <div className="section-header">
-              <span>📜 Transaction History ({customerStatements.length})</span>
-            </div>
-
-            {customerStatements.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
-                Koi purana transaction record nahi hai.
+            {/* Transaction Timeline */}
+            <div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+                Transaction History ({activeCustomerBoris.length})
               </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {customerStatements.map((st) => {
-                  const isPayment = st.type === 'payment';
-                  const isCredit = st.paymentMode === 'credit';
-                  return (
+
+              {activeCustomerBoris.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                  Is grahak ka abhi tak koi transaction record nahi hai.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {activeCustomerBoris.map((b) => (
                     <div
-                      key={st.id}
+                      key={b.id}
                       style={{
-                        padding: '10px 12px',
-                        borderRadius: '0.5rem',
-                        background: 'rgba(255,255,255,0.03)',
-                        borderLeft: isPayment ? '4px solid #22c55e' : (isCredit ? '4px solid #ef4444' : '4px solid #38bdf8'),
+                        padding: '8px 12px',
+                        borderRadius: '0.65rem',
+                        border: '1px solid #f1f5f9',
+                        backgroundColor: '#f8fafc',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                       }}
                     >
                       <div>
-                        <strong style={{ fontSize: '0.95rem' }}>
-                          {isPayment ? '💚 Jama Cash Payment' : `${st.mode?.toUpperCase()} • ${st.grainType || ''}`}
-                        </strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                          {st.inputWeight ? `${st.inputWeight}kg` : (st.oilOutput ? `${st.oilOutput}L Tel` : '')}{' '}
-                          • {new Date(st.createdAt || st.doneDate || Date.now()).toLocaleDateString()}
-                          {st.notes ? ` • ${st.notes}` : ''}
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                          {b.grainType} ({b.inputWeight || 0}kg)
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          {b.date || (b.createdAt ? b.createdAt.split('T')[0] : '')} • {b.paymentMode === 'credit' ? 'Udhar' : 'Paid'}
                         </div>
                       </div>
 
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: isPayment ? '#4ade80' : (isCredit ? '#f87171' : '#fff') }}>
-                          {isPayment ? `-₹ ${st.amount}` : `+₹ ${st.amount}`}
-                        </div>
-                        <span className={`status-pill ${isPayment ? 'cash' : (st.paymentMode || 'cash')}`}>
-                          {isPayment ? 'Jama' : (st.paymentMode === 'credit' ? 'Udhar' : 'Paid')}
-                        </span>
+                      <div style={{
+                        fontSize: '0.92rem',
+                        fontWeight: 800,
+                        color: b.paymentMode === 'credit' ? '#ef4444' : '#16a34a'
+                      }}>
+                        {b.paymentMode === 'credit' ? `+₹${b.amount}` : `-₹${b.amount}`}
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Customer List View */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {sortedCustomers.length === 0 ? (
+              <div style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center', color: '#64748b' }}>
+                Koi grahak nahi mila. Naya grahak add karein!
               </div>
+            ) : (
+              sortedCustomers.map((c) => (
+                <div
+                  key={c.id}
+                  onClick={() => setActiveCustomerId(c.id)}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '0.85rem',
+                    padding: '12px 14px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>
+                      {c.name}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px', display: 'flex', gap: '8px' }}>
+                      {c.village && <span>{c.village}</span>}
+                      {c.phone && <span>• {c.phone}</span>}
+                    </div>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>Balance</div>
+                    <div style={{
+                      fontSize: '1.1rem',
+                      fontWeight: 800,
+                      color: (c.balance || 0) > 0 ? '#ef4444' : '#16a34a',
+                      fontFamily: "'Outfit', sans-serif"
+                    }}>
+                      ₹{c.balance || 0}
+                    </div>
+                  </div>
+                </div>
+              ))
             )}
           </div>
-        </div>
-      )}
+        )}
+      </section>
 
-      {/* Add Customer Modal */}
+      {/* 4. Add Customer Modal */}
       {showAddCust && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px'
         }}>
-          <div className="card" style={{ width: '100%', maxWidth: '420px', background: 'var(--card-bg)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>➕ Naya Grahak Add Karein</h3>
-            <form onSubmit={handleAddCustomerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Grahak ka Naam (e.g. Ramesh)"
-                value={custName}
-                onChange={(e) => setCustName(e.target.value)}
-                required
-                autoFocus
-              />
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Gaon / Village (Optional)"
-                value={custVillage}
-                onChange={(e) => setCustVillage(e.target.value)}
-              />
-              <input
-                type="tel"
-                className="form-input"
-                placeholder="Mobile Number (📱 Auto-SMS)"
-                value={custPhone}
-                onChange={(e) => setCustPhone(e.target.value)}
-              />
-              <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                <button type="submit" className="big-btn" style={{ minHeight: '48px' }}>Save Grahak</button>
-                <button type="button" className="btn-secondary-action" style={{ minHeight: '48px' }} onClick={() => setShowAddCust(false)}>Cancel</button>
+          <div style={{
+            width: '100%',
+            maxWidth: '380px',
+            backgroundColor: '#ffffff',
+            borderRadius: '1.25rem',
+            padding: '1.5rem',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                Naya Grahak Add Karein
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddCust(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Grahak Ka Naam
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ramesh Kumar"
+                  value={custName}
+                  onChange={(e) => setCustName(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 12px',
+                    borderRadius: '0.75rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Gaon / Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rampur"
+                  value={custVillage}
+                  onChange={(e) => setCustVillage(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 12px',
+                    borderRadius: '0.75rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="9876543210"
+                  maxLength="10"
+                  value={custPhone}
+                  onChange={(e) => setCustPhone(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 12px',
+                    borderRadius: '0.75rem',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  height: '48px',
+                  backgroundColor: '#d97706',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '0.75rem',
+                  fontSize: '1rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  marginTop: '0.5rem'
+                }}
+              >
+                Grahak Save Karein
+              </button>
             </form>
           </div>
         </div>

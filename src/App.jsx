@@ -86,7 +86,7 @@ export default function App() {
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
         <div className="app-shell">
-          <Header />
+          <Header setActiveTab={setActiveTab} onSelectCustomer={handleSelectCustomer} />
           
           <main style={{ paddingBottom: '70px' }}>
             {activeTab === 'home' && (
