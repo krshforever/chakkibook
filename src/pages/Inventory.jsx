@@ -13,10 +13,17 @@ import {
   X, 
   Droplet, 
   Wheat, 
-  Minus, 
   CheckCircle2, 
-  ArrowUpRight,
-  TrendingUp
+  TrendingUp,
+  Calculator,
+  Flame,
+  Layers,
+  ArrowRight,
+  Truck,
+  Building2,
+  Receipt,
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useTranslation } from '../utils/translations';
@@ -29,8 +36,10 @@ export default function Inventory() {
   const stockEntries = useStore((state) => state.stockEntries || []);
   const addStockEntry = useStore((state) => state.addStockEntry);
   const hasPermission = useStore((state) => state.hasPermission);
+  const shop = useStore((state) => state.shop || {});
 
-  const [activeSubTab, setActiveSubTab] = useState('stock'); // 'stock' | 'add' | 'mandi'
+  const [activeSubTab, setActiveSubTab] = useState('stock'); // 'stock' | 'mandi' | 'spellar' | 'add'
+  const [stockFilter, setStockFilter] = useState('all'); // 'all' | 'low'
   const [selectedItem, setSelectedItem] = useState(null);
   const [qtyChange, setQtyChange] = useState('');
   
@@ -42,11 +51,32 @@ export default function Inventory() {
   const [newItemAlert, setNewItemAlert] = useState('20');
   const [newItemPrice, setNewItemPrice] = useState('');
 
-  // Mandi Purchase State
+  // Mandi Purchase Batch Recorder State
+  const [mandiSupplier, setMandiSupplier] = useState('');
   const [mandiItem, setMandiItem] = useState('Sarson Seeds');
-  const [mandiQty, setMandiQty] = useState('');
-  const [mandiRate, setMandiRate] = useState('');
+  const [mandiQuintals, setMandiQuintals] = useState('');
+  const [mandiRatePerQuintal, setMandiRatePerQuintal] = useState('');
   const [mandiNotes, setMandiNotes] = useState('');
+
+  // Spellar Yield Calculator State
+  const [sarsonInputKg, setSarsonInputKg] = useState('100');
+  const [oilRatio, setOilRatio] = useState('0.33'); // 33% yield (0.33 L/kg)
+  const [khaliRatio, setKhaliRatio] = useState('0.65'); // 65% yield (0.65 kg/kg)
+  const [yieldNotice, setYieldNotice] = useState(false);
+
+  // Helper calculations for Mandi Purchase
+  const mandiWeightKg = (Number(mandiQuintals) || 0) * 100;
+  const mandiTotalBill = (Number(mandiQuintals) || 0) * (Number(mandiRatePerQuintal) || 0);
+  const mandiEffectiveRatePerKg = Number(mandiQuintals) > 0 ? (Number(mandiRatePerQuintal) / 100) : 0;
+
+  // Helper calculations for Spellar Yield
+  const sarsonKgNum = Number(sarsonInputKg) || 0;
+  const expectedOilLitre = Math.round(sarsonKgNum * (Number(oilRatio) || 0.33) * 10) / 10;
+  const expectedKhaliKg = Math.round(sarsonKgNum * (Number(khaliRatio) || 0.65) * 10) / 10;
+  const pressingRate = shop.spellarRates?.pirai || 12;
+  const khaliRate = shop.spellarRates?.khari || 35;
+  const estimatedPressingCharge = sarsonKgNum * pressingRate;
+  const estimatedOutputValuation = (expectedOilLitre * 140) + (expectedKhaliKg * khaliRate);
 
   const handleStockUpdate = (e) => {
     e.preventDefault();
@@ -75,149 +105,288 @@ export default function Inventory() {
 
   const handleMandiPurchase = (e) => {
     e.preventDefault();
-    if (!mandiQty || !mandiRate) return;
-    const amount = Number(mandiQty) * Number(mandiRate);
+    if (!mandiQuintals || !mandiRatePerQuintal) return;
+
+    // Find or target inventory item for Sarson/Wheat
+    let targetInvId = 'inv1';
+    if (mandiItem.toLowerCase().includes('wheat')) targetInvId = 'inv4';
+    
     addStockEntry({
       type: 'purchase',
       item: mandiItem,
-      weight: Number(mandiQty),
+      supplier: mandiSupplier.trim() || 'Mandi Trader',
+      weight: mandiWeightKg,
+      quintals: Number(mandiQuintals),
+      ratePerQuintal: Number(mandiRatePerQuintal),
       unit: 'kg',
-      rate: Number(mandiRate),
-      amount,
-      notes: mandiNotes || 'Mandi Batch Purchase'
+      rate: mandiEffectiveRatePerKg,
+      amount: mandiTotalBill,
+      notes: mandiNotes || `Mandi Batch: ${mandiQuintals} Quintals @ ₹${mandiRatePerQuintal}/Qtl`
     });
-    setMandiQty('');
-    setMandiRate('');
+
+    setMandiSupplier('');
+    setMandiQuintals('');
+    setMandiRatePerQuintal('');
     setMandiNotes('');
     setActiveSubTab('stock');
   };
 
-  // Total valuation calculation
-  const totalValuation = inventory.reduce((acc, item) => {
-    const rate = item.pricePerUnit || (item.category === 'seed' ? 55 : item.category === 'oil' ? 140 : 35);
-    return acc + (item.stock * rate);
-  }, 0);
+  const handleRecordPressingYield = (e) => {
+    e.preventDefault();
+    if (sarsonKgNum <= 0) return;
 
-  const lowStockCount = inventory.filter(i => i.stock <= i.lowAlert).length;
+    // Deduct Sarson seeds (inv1)
+    const sarsonItem = inventory.find(i => i.id === 'inv1' || i.category === 'seed');
+    if (sarsonItem) {
+      updateStock(sarsonItem.id, -sarsonKgNum);
+    }
+
+    // Increase Mustard Oil (inv2)
+    const oilItem = inventory.find(i => i.id === 'inv2' || i.category === 'oil');
+    if (oilItem) {
+      updateStock(oilItem.id, expectedOilLitre);
+    }
+
+    // Increase Khali Cake (inv3)
+    const khaliItem = inventory.find(i => i.id === 'inv3' || i.category === 'khari');
+    if (khaliItem) {
+      updateStock(khaliItem.id, expectedKhaliKg);
+    }
+
+    setYieldNotice(true);
+    setTimeout(() => setYieldNotice(false), 4000);
+  };
+
+  // Godown Stock Valuation Breakdown
+  const getItemValuation = (item) => {
+    const estRate = item.pricePerUnit || (item.category === 'seed' ? 55 : item.category === 'oil' ? 140 : item.category === 'khari' ? 35 : 40);
+    return item.stock * estRate;
+  };
+
+  const totalValuation = inventory.reduce((acc, item) => acc + getItemValuation(item), 0);
+  
+  const sarsonValuation = inventory
+    .filter(i => i.category === 'seed' || i.name.toLowerCase().includes('sarson'))
+    .reduce((acc, item) => acc + getItemValuation(item), 0);
+
+  const oilValuation = inventory
+    .filter(i => i.category === 'oil' || i.name.toLowerCase().includes('oil') || i.name.toLowerCase().includes('tel'))
+    .reduce((acc, item) => acc + getItemValuation(item), 0);
+
+  const khaliValuation = inventory
+    .filter(i => i.category === 'khari' || i.name.toLowerCase().includes('khali') || i.name.toLowerCase().includes('cake'))
+    .reduce((acc, item) => acc + getItemValuation(item), 0);
+
+  const grainsValuation = Math.max(0, totalValuation - (sarsonValuation + oilValuation + khaliValuation));
+
+  const lowStockItems = inventory.filter(i => i.stock <= i.lowAlert);
+  const lowStockCount = lowStockItems.length;
+
+  const displayedInventory = stockFilter === 'low' ? lowStockItems : inventory;
 
   return (
     <div className="app-container">
-      {/* Top Banner & Valuation Summary */}
+      {/* GODOWN STOCK VALUATION BANNER */}
       <div 
         className="card" 
         style={{ 
-          background: 'linear-gradient(135deg, #1e293b, #0f172a)', 
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', 
           color: '#ffffff', 
-          padding: '16px', 
-          marginBottom: '8px', 
+          padding: '18px', 
+          marginBottom: '10px', 
           borderRadius: 'var(--radius)', 
-          border: '1px solid rgba(255,255,255,0.1)' 
+          border: '1px solid rgba(255,255,255,0.12)',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.15)'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-              <Package size={14} style={{ color: '#94a3b8' }} />
-              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', fontWeight: 700 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <Building2 size={16} style={{ color: '#fbbf24' }} />
+              <span style={{ fontSize: '0.78rem', textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.06em', fontWeight: 800 }}>
                 {t('inventory.title')}
               </span>
             </div>
-            <h2 style={{ fontSize: '1.6rem', margin: '4px 0 0 0', color: '#fbbf24', fontWeight: 800 }}>
+            <h2 style={{ fontSize: '1.8rem', margin: '4px 0 2px 0', color: '#fbbf24', fontWeight: 900, letterSpacing: '-0.02em' }}>
               ₹ {totalValuation.toLocaleString('en-IN')}
             </h2>
-            <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>{t('inventory.marketValuation')}</span>
+            <div style={{ fontSize: '0.76rem', color: '#cbd5e1', fontWeight: 600 }}>
+              {t('inventory.totalValuation')}
+            </div>
           </div>
 
           <div style={{ textAlign: 'right' }}>
             {lowStockCount > 0 ? (
-              <span 
-                className="badge" 
+              <div 
                 style={{ 
-                  background: 'rgba(239, 68, 68, 0.2)', 
-                  border: '1px solid #ef4444',
+                  background: 'rgba(239, 68, 68, 0.22)', 
+                  border: '1.5px solid #ef4444',
                   color: '#f87171', 
-                  fontSize: '0.75rem', 
-                  padding: '5px 10px', 
+                  fontSize: '0.78rem', 
+                  padding: '6px 12px', 
                   borderRadius: 'var(--radius-pill)', 
-                  fontWeight: 700,
+                  fontWeight: 800,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '6px'
                 }}
               >
-                <AlertTriangle size={13} />
+                <AlertTriangle size={14} />
                 <span>{lowStockCount} {t('inventory.lowStock')}</span>
-              </span>
+              </div>
             ) : (
-              <span 
-                className="badge" 
+              <div 
                 style={{ 
-                  background: 'rgba(16, 185, 129, 0.2)', 
-                  border: '1px solid #10b981',
+                  background: 'rgba(16, 185, 129, 0.22)', 
+                  border: '1.5px solid #10b981',
                   color: '#34d399', 
-                  fontSize: '0.75rem', 
-                  padding: '5px 10px', 
+                  fontSize: '0.78rem', 
+                  padding: '6px 12px', 
                   borderRadius: 'var(--radius-pill)', 
-                  fontWeight: 700,
+                  fontWeight: 800,
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '6px'
                 }}
               >
-                <Check size={13} />
-                <span>{t('inventory.stockHealthFull')}</span>
-              </span>
+                <ShieldCheck size={14} />
+                <span>{t('inventory.healthyStock')}</span>
+              </div>
             )}
+          </div>
+        </div>
+
+        {/* Commodity Valuation Matrix Chips */}
+        <div 
+          style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(3, 1fr)', 
+            gap: '8px', 
+            marginTop: '16px',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+            paddingTop: '12px'
+          }}
+        >
+          <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px 10px', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Wheat size={12} style={{ color: '#f59e0b' }} />
+              <span>{t('inventory.sarsonValuation')}</span>
+            </div>
+            <strong style={{ fontSize: '0.92rem', color: '#ffffff', fontWeight: 800 }}>
+              ₹ {sarsonValuation.toLocaleString('en-IN')}
+            </strong>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px 10px', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Droplet size={12} style={{ color: '#3b82f6' }} />
+              <span>{t('inventory.oilValuation')}</span>
+            </div>
+            <strong style={{ fontSize: '0.92rem', color: '#ffffff', fontWeight: 800 }}>
+              ₹ {oilValuation.toLocaleString('en-IN')}
+            </strong>
+          </div>
+
+          <div style={{ background: 'rgba(255,255,255,0.06)', padding: '8px 10px', borderRadius: '0.5rem', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Flame size={12} style={{ color: '#10b981' }} />
+              <span>{t('inventory.khaliValuation')}</span>
+            </div>
+            <strong style={{ fontSize: '0.92rem', color: '#ffffff', fontWeight: 800 }}>
+              ₹ {khaliValuation.toLocaleString('en-IN')}
+            </strong>
           </div>
         </div>
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
         <button
           type="button"
           className={`pill-btn ${activeSubTab === 'stock' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('stock')}
-          style={{ minHeight: '42px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          style={{ minHeight: '42px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '4px 6px' }}
         >
-          <Package size={15} />
+          <Package size={14} />
           <span>{t('inventory.stockOverview')}</span>
         </button>
+
         <button
           type="button"
           className={`pill-btn ${activeSubTab === 'mandi' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('mandi')}
-          style={{ minHeight: '42px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          style={{ minHeight: '42px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '4px 6px' }}
         >
-          <ShoppingCart size={15} />
+          <ShoppingCart size={14} />
           <span>{t('inventory.mandiPurchase')}</span>
         </button>
+
+        <button
+          type="button"
+          className={`pill-btn ${activeSubTab === 'spellar' ? 'active' : ''}`}
+          onClick={() => setActiveSubTab('spellar')}
+          style={{ minHeight: '42px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '4px 6px' }}
+        >
+          <Calculator size={14} />
+          <span>Yield Calc</span>
+        </button>
+
         <button
           type="button"
           className={`pill-btn ${activeSubTab === 'add' ? 'active' : ''}`}
           onClick={() => setActiveSubTab('add')}
-          style={{ minHeight: '42px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          style={{ minHeight: '42px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', padding: '4px 6px' }}
         >
-          <Plus size={15} />
+          <Plus size={14} />
           <span>{t('inventory.newItem')}</span>
         </button>
       </div>
 
-      {/* TAB 1: Stock Overview with Reorder Progress Bars */}
+      {/* SUB-TAB 1: GODOWN STOCK OVERVIEW & ALERTS */}
       {activeSubTab === 'stock' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {inventory.map((item) => {
+          {/* Stock Filter Switcher */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 2px' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Layers size={15} style={{ color: 'var(--primary)' }} />
+              <span>{t('inventory.stockOverview')} ({displayedInventory.length})</span>
+            </span>
+
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                className={`pill-btn ${stockFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStockFilter('all')}
+                style={{ minHeight: '32px', height: '32px', padding: '0 10px', fontSize: '0.75rem' }}
+              >
+                All Stock
+              </button>
+              <button
+                type="button"
+                className={`pill-btn ${stockFilter === 'low' ? 'active' : ''}`}
+                onClick={() => setStockFilter('low')}
+                style={{ 
+                  minHeight: '32px', 
+                  height: '32px', 
+                  padding: '0 10px', 
+                  fontSize: '0.75rem',
+                  borderColor: lowStockCount > 0 ? '#ef4444' : undefined,
+                  color: lowStockCount > 0 ? '#ef4444' : undefined
+                }}
+              >
+                Low Stock ({lowStockCount})
+              </button>
+            </div>
+          </div>
+
+          {displayedInventory.map((item) => {
             const isLow = item.stock <= item.lowAlert;
             const isCritical = item.stock <= item.lowAlert * 0.5;
-            const estRate = item.pricePerUnit || (item.category === 'seed' ? 55 : item.category === 'oil' ? 140 : 35);
+            const estRate = item.pricePerUnit || (item.category === 'seed' ? 55 : item.category === 'oil' ? 140 : item.category === 'khari' ? 35 : 40);
             const value = item.stock * estRate;
 
-            // Calculate stock progress bar percentage
             const safeCapacity = Math.max(item.lowAlert * 2.5, item.stock, 50);
             const progressPercent = Math.min(100, Math.max(5, Math.round((item.stock / safeCapacity) * 100)));
-            const alertThresholdPercent = Math.min(100, Math.round((item.lowAlert / safeCapacity) * 100));
-
-            // Bar color scheme
             const barColor = isCritical ? '#ef4444' : isLow ? '#f59e0b' : '#10b981';
 
             return (
@@ -226,7 +395,7 @@ export default function Inventory() {
                 className="card"
                 style={{
                   borderLeft: isLow ? '5px solid #ef4444' : '5px solid #10b981',
-                  background: isLow ? 'var(--card-bg)' : 'var(--card-bg)',
+                  background: 'var(--card-bg)',
                   padding: '14px 16px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -236,23 +405,25 @@ export default function Inventory() {
                 {/* Header row */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                   <div>
-                    <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <h3 style={{ fontSize: '1.05rem', margin: 0, fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {item.category === 'oil' ? (
-                        <Droplet size={16} style={{ color: 'var(--primary)' }} />
+                        <Droplet size={17} style={{ color: '#3b82f6' }} />
+                      ) : item.category === 'khari' ? (
+                        <Flame size={17} style={{ color: '#10b981' }} />
                       ) : (
-                        <Wheat size={16} style={{ color: 'var(--primary)' }} />
+                        <Wheat size={17} style={{ color: '#f59e0b' }} />
                       )}
                       <span>{item.name}</span>
                     </h3>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
                       <span style={{ textTransform: 'capitalize' }}>Category: {item.category}</span>
                       <span>•</span>
-                      <span>Value: ₹{value.toLocaleString('en-IN')}</span>
+                      <span>Market Value: ₹{value.toLocaleString('en-IN')}</span>
                     </div>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: isLow ? '#ef4444' : 'var(--text-main)' }}>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 900, color: isLow ? '#ef4444' : 'var(--text-main)' }}>
                       {item.stock} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>{item.unit}</span>
                     </div>
                     {hasPermission('adjustStock') && (
@@ -265,15 +436,16 @@ export default function Inventory() {
                           fontSize: '0.76rem', 
                           marginTop: '4px', 
                           width: 'auto',
-                          height: '32px',
-                          minHeight: '32px',
+                          height: '30px',
+                          minHeight: '30px',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '4px',
+                          borderRadius: '0.5rem'
                         }}
                       >
                         <RefreshCw size={12} />
-                        <span>{t('inventory.adjustStock')}</span>
+                        <span>{t('inventory.stockAdjust')}</span>
                       </button>
                     )}
                   </div>
@@ -282,21 +454,21 @@ export default function Inventory() {
                 {/* Stock Reorder Progress Bar Section */}
                 <div style={{ marginTop: '2px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', marginBottom: '4px' }}>
-                    <span style={{ color: isLow ? '#ef4444' : 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ color: isLow ? '#ef4444' : 'var(--text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
                       {isLow ? (
                         <>
-                          <AlertTriangle size={12} />
-                          <span>{t('inventory.reorderWarning')} (Min: {item.lowAlert} {item.unit})</span>
+                          <AlertTriangle size={13} style={{ color: '#ef4444' }} />
+                          <span>{t('inventory.reorderWarning')} (Alert: {item.lowAlert} {item.unit})</span>
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 size={12} style={{ color: '#10b981' }} />
-                          <span>{t('inventory.healthyStock')} (Min: {item.lowAlert} {item.unit})</span>
+                          <CheckCircle2 size={13} style={{ color: '#10b981' }} />
+                          <span>{t('inventory.healthyStock')} (Alert Limit: {item.lowAlert} {item.unit})</span>
                         </>
                       )}
                     </span>
-                    <span style={{ fontWeight: 700, color: barColor }}>
-                      {progressPercent}% Full
+                    <span style={{ fontWeight: 800, color: barColor }}>
+                      {progressPercent}% Stock
                     </span>
                   </div>
 
@@ -326,7 +498,7 @@ export default function Inventory() {
             );
           })}
 
-          {/* Quick Stock Adjustment Modal / Card */}
+          {/* Quick Stock Adjustment Card */}
           {selectedItem && (
             <div 
               className="card" 
@@ -341,15 +513,16 @@ export default function Inventory() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Sliders size={16} style={{ color: 'var(--primary)' }} />
-                  <h4 style={{ fontSize: '1rem', margin: 0, fontWeight: 700 }}>Adjust Stock: {selectedItem.name}</h4>
+                  <h4 style={{ fontSize: '1rem', margin: 0, fontWeight: 800 }}>
+                    {t('inventory.adjustStockTitle')} {selectedItem.name}
+                  </h4>
                 </div>
                 <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>
-                  Current: {selectedItem.stock} {selectedItem.unit}
+                  {t('inventory.current')} {selectedItem.stock} {selectedItem.unit}
                 </span>
               </div>
               
               <form onSubmit={handleStockUpdate} style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-                {/* Preset increment / decrement buttons */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                   <button 
                     type="button" 
@@ -389,7 +562,7 @@ export default function Inventory() {
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="Enter change (e.g. +50 or -10)"
+                    placeholder="e.g. +50 or -20"
                     value={qtyChange}
                     onChange={(e) => setQtyChange(e.target.value)}
                     required
@@ -419,23 +592,37 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* TAB 2: Mandi Purchase Log */}
+      {/* SUB-TAB 2: MANDI PURCHASE BATCH RECORDER */}
       {activeSubTab === 'mandi' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div className="card" style={{ padding: '16px' }}>
-            <h3 style={{ fontSize: '1.1rem', marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{ fontSize: '1.1rem', marginTop: 0, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShoppingCart size={18} style={{ color: 'var(--primary)' }} />
               <span>{t('inventory.mandiTitle')}</span>
             </h3>
 
             <form onSubmit={handleMandiPurchase} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label className="input-label">Material Name</label>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Truck size={14} style={{ color: 'var(--primary)' }} />
+                  <span>{t('inventory.supplierName')}</span>
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Laxmi Traders Mandi Gate 2"
+                  value={mandiSupplier}
+                  onChange={(e) => setMandiSupplier(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="input-label">{t('inventory.materialName')}</label>
                 <select className="form-input" value={mandiItem} onChange={(e) => setMandiItem(e.target.value)}>
-                  <option value="Sarson Seeds">Sarson Seeds (Peeli / Kali)</option>
-                  <option value="Wheat Grain">Gehun Grain (Wheat)</option>
-                  <option value="Maize Grain">Makka Grain</option>
-                  <option value="Packing Bags">Packing Bags (Katte)</option>
+                  <option value="Sarson Seeds">Sarson Seeds (Peeli / Kali Mustard)</option>
+                  <option value="Wheat Grain">Wheat Grain (Gehun)</option>
+                  <option value="Maize Grain">Maize Grain (Makka)</option>
+                  <option value="Packing Katte">Packing Bags (Katte)</option>
                 </select>
               </div>
 
@@ -443,56 +630,62 @@ export default function Inventory() {
                 <div>
                   <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Scale size={14} style={{ color: 'var(--primary)' }} />
-                    <span>Vazan (Kg / Qty)</span>
+                    <span>{t('inventory.weightQuintals')}</span>
                   </label>
                   <input
                     type="number"
+                    step="0.1"
                     className="form-input"
-                    placeholder="e.g. 500"
-                    value={mandiQty}
-                    onChange={(e) => setMandiQty(e.target.value)}
+                    placeholder="e.g. 5.5 Quintals"
+                    value={mandiQuintals}
+                    onChange={(e) => setMandiQuintals(e.target.value)}
                     required
                   />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    = {mandiWeightKg} Kg (1 Qtl = 100 Kg)
+                  </span>
                 </div>
+
                 <div>
                   <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <Coins size={14} style={{ color: 'var(--primary)' }} />
-                    <span>Mandi Rate (₹/Kg)</span>
+                    <span>{t('inventory.ratePerQuintal')}</span>
                   </label>
                   <input
                     type="number"
+                    step="10"
                     className="form-input"
-                    placeholder="e.g. 55"
-                    value={mandiRate}
-                    onChange={(e) => setMandiRate(e.target.value)}
+                    placeholder="e.g. 5500"
+                    value={mandiRatePerQuintal}
+                    onChange={(e) => setMandiRatePerQuintal(e.target.value)}
                     required
                   />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    = ₹{mandiEffectiveRatePerKg.toFixed(2)}/Kg
+                  </span>
                 </div>
               </div>
 
               <div>
-                <label className="input-label">Trader / Mandi Note</label>
+                <label className="input-label">{t('inventory.mandiNotes')}</label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. Grain Market Batch #14 - Cash Paid"
+                  placeholder="e.g. Mandi Batch #14 - Cash Paid / Bill No 402"
                   value={mandiNotes}
                   onChange={(e) => setMandiNotes(e.target.value)}
                 />
               </div>
 
-              {mandiQty && mandiRate && (
-                <div 
-                  className="calc-summary-box"
-                  style={{ padding: '10px 14px' }}
-                >
+              {mandiQuintals && mandiRatePerQuintal && (
+                <div className="calc-summary-box" style={{ padding: '12px 14px' }}>
                   <div className="calc-row highlight" style={{ border: 'none', padding: 0 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Coins size={16} />
-                      <span>Kul Mandi Cost:</span>
+                      <Receipt size={16} style={{ color: 'var(--primary-dark)' }} />
+                      <span>{t('inventory.totalBill')}</span>
                     </span>
-                    <span className="big-number" style={{ fontSize: '1.3rem', color: 'var(--primary-dark)' }}>
-                      ₹ {(Number(mandiQty) * Number(mandiRate)).toLocaleString('en-IN')}
+                    <span className="big-number" style={{ fontSize: '1.35rem', color: 'var(--primary-dark)', fontWeight: 900 }}>
+                      ₹ {mandiTotalBill.toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
@@ -535,17 +728,24 @@ export default function Inventory() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>{st.item}</div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{st.item}</span>
+                        {st.supplier && (
+                          <span style={{ fontSize: '0.72rem', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--card-border)' }}>
+                            {st.supplier}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                         {new Date(st.date).toLocaleDateString('en-IN')} • {st.notes}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '1rem' }}>
+                      <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1rem' }}>
                         ₹ {st.amount.toLocaleString('en-IN')}
                       </div>
                       <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                        {st.weight} {st.unit} @ ₹{st.rate}/kg
+                        {st.quintals ? `${st.quintals} Qtl` : `${st.weight} kg`} @ ₹{st.ratePerQuintal ? `${st.ratePerQuintal}/Qtl` : `${st.rate}/kg`}
                       </div>
                     </div>
                   </div>
@@ -556,21 +756,160 @@ export default function Inventory() {
         </div>
       )}
 
-      {/* TAB 3: Add New Inventory Item */}
+      {/* SUB-TAB 3: SPELLAR OIL YIELD CALCULATOR */}
+      {activeSubTab === 'spellar' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div className="card" style={{ padding: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <Calculator size={18} style={{ color: 'var(--primary)' }} />
+              <h3 style={{ fontSize: '1.1rem', margin: 0, fontWeight: 800 }}>{t('inventory.spellarCalculator')}</h3>
+            </div>
+
+            {yieldNotice && (
+              <div
+                style={{
+                  background: 'var(--success-bg)',
+                  color: 'var(--success)',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  marginBottom: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  border: '1px solid var(--success)'
+                }}
+              >
+                <CheckCircle2 size={16} />
+                <span>{t('inventory.yieldSuccess')}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleRecordPressingYield} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <Wheat size={14} style={{ color: '#f59e0b' }} />
+                  <span>{t('inventory.sarsonInput')}</span>
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  className="form-input"
+                  placeholder="e.g. 100"
+                  value={sarsonInputKg}
+                  onChange={(e) => setSarsonInputKg(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label className="input-label">{t('inventory.oilYieldRatio')}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input"
+                    value={oilRatio}
+                    onChange={(e) => setOilRatio(e.target.value)}
+                    required
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Default: 0.33 (33%)</span>
+                </div>
+
+                <div>
+                  <label className="input-label">{t('inventory.khaliYieldRatio')}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input"
+                    value={khaliRatio}
+                    onChange={(e) => setKhaliRatio(e.target.value)}
+                    required
+                  />
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Default: 0.65 (65%)</span>
+                </div>
+              </div>
+
+              {/* Real-time Calculation Summary Box */}
+              <div 
+                className="calc-summary-box" 
+                style={{ 
+                  background: 'var(--bg-elevated)', 
+                  padding: '14px', 
+                  borderRadius: 'var(--radius)', 
+                  border: '1px solid var(--card-border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
+              >
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={15} style={{ color: 'var(--primary)' }} />
+                  <span>Calculated Output Yields:</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+                  <div style={{ background: 'rgba(59, 130, 246, 0.08)', padding: '10px', borderRadius: '0.5rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Droplet size={13} />
+                      <span>{t('inventory.calcOilOutput')}</span>
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1d4ed8', marginTop: '2px' }}>
+                      {expectedOilLitre} Litres
+                    </div>
+                  </div>
+
+                  <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '10px', borderRadius: '0.5rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Flame size={13} />
+                      <span>{t('inventory.calcKhaliOutput')}</span>
+                    </div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#047857', marginTop: '2px' }}>
+                      {expectedKhaliKg} Kg
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', paddingTop: '6px', borderTop: '1px dashed var(--card-border)' }}>
+                  <span>{t('inventory.calcPiraiFee')} (@ ₹{pressingRate}/kg):</span>
+                  <strong style={{ color: 'var(--text-main)' }}>₹ {estimatedPressingCharge}</strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--primary-dark)', fontWeight: 800 }}>
+                  <span>Output Market Valuation:</span>
+                  <span>₹ {estimatedOutputValuation.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="big-btn" 
+                style={{ minHeight: '48px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <Check size={18} />
+                <span>{t('inventory.recordPressingBatch')}</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB 4: ADD NEW INVENTORY ITEM */}
       {activeSubTab === 'add' && (
         <div className="card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '1.1rem', marginTop: 0, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={18} style={{ color: 'var(--primary)' }} />
-            <span>{t('inventory.newItem')}</span>
+            <span>{t('inventory.newItemTitle')}</span>
           </h3>
 
           <form onSubmit={handleCreateItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div>
-              <label className="input-label">Item Naam</label>
+              <label className="input-label">{t('inventory.itemName')}</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Suji Bag 50kg, Chokar, Peeli Sarson"
+                placeholder="e.g. Suji Bag 50kg, Peeli Sarson"
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
                 required
@@ -580,17 +919,17 @@ export default function Inventory() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label className="input-label">Category</label>
+                <label className="input-label">{t('inventory.category')}</label>
                 <select className="form-input" value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)}>
-                  <option value="seed">Seed (Beej)</option>
+                  <option value="seed">Seed (Sarson)</option>
                   <option value="oil">Oil (Tel)</option>
                   <option value="khari">Khali (Cake)</option>
                   <option value="flour">Atta / Suji</option>
-                  <option value="packing">Bags / Packing</option>
+                  <option value="packing">Packing Katte</option>
                 </select>
               </div>
               <div>
-                <label className="input-label">Unit</label>
+                <label className="input-label">{t('inventory.unit')}</label>
                 <select className="form-input" value={newItemUnit} onChange={(e) => setNewItemUnit(e.target.value)}>
                   <option value="kg">kg</option>
                   <option value="litre">litre</option>
@@ -602,7 +941,7 @@ export default function Inventory() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label className="input-label">Initial Stock</label>
+                <label className="input-label">{t('inventory.initialStock')}</label>
                 <input
                   type="number"
                   className="form-input"
@@ -613,7 +952,7 @@ export default function Inventory() {
                 />
               </div>
               <div>
-                <label className="input-label">Low Stock Warning Limit</label>
+                <label className="input-label">{t('inventory.warningLimit')}</label>
                 <input
                   type="number"
                   className="form-input"
@@ -626,7 +965,7 @@ export default function Inventory() {
             </div>
 
             <div>
-              <label className="input-label">Estimated Rate (₹ per unit)</label>
+              <label className="input-label">{t('inventory.estimatedRate')}</label>
               <input
                 type="number"
                 className="form-input"
@@ -642,7 +981,7 @@ export default function Inventory() {
               style={{ minHeight: '48px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '4px' }}
             >
               <Check size={18} />
-              <span>{t('inventory.saveNewItem')}</span>
+              <span>{t('inventory.saveNewItemBtn')}</span>
             </button>
           </form>
         </div>

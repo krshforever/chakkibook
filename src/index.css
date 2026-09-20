@@ -1,113 +1,86 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700;1,800&display=swap');
 
 /* ==========================================================================
-   Chakkibook V2 -- Silicon Valley Light Mode HSL Design System
-   Architecture: Three-layer design tokens (Primitive -> Semantic -> Component)
+   Chakkibook V2 -- Luxury Vercel/Linear-Grade Light Mode HSL Design System
+   Architecture: 3-Layer Design Tokens (Primitive -> Semantic -> Component)
    Zero emojis. High-precision typography, tabular numbers, spring physics.
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   1. Design Tokens Architecture: Root (Default Silicon Valley Light Mode)
+   1. Design Tokens Architecture: Root (Vercel/Linear Light Mode HSL Tokens)
    -------------------------------------------------------------------------- */
 :root {
-  /* HSL Color Channels (Light Mode Primitives) */
-  --bg-h: 40;
-  --bg-s: 33%;
-  --bg-l: 98%;
+  /* Modern HSL CSS Variables (Raw Space-Separated Channels) */
+  --primary: 38 92% 50%;         /* Warm saffron gold #f59e0b */
+  --primary-hover: 38 92% 45%;
+  --primary-light: 38 100% 96%;
+  --primary-dark: 32 95% 38%;
 
-  --fg-h: 220;
-  --fg-s: 25%;
-  --fg-l: 10%;
+  --bg-app: 210 40% 98%;          /* App background #f8fafc */
+  --card: 0 0% 100%;             /* Card surface #ffffff */
+  --card-border: 214 32% 91%;     /* Subtle border #e2e8f0 */
 
-  --card-h: 0;
-  --card-s: 0%;
-  --card-l: 100%;
+  --text-main: 222 47% 11%;       /* Main body text #0f172a */
+  --text-muted: 215 16% 47%;      /* Muted text #64748b */
 
-  --border-h: 220;
-  --border-s: 14%;
-  --border-l: 89%;
+  --accent-ai: 243 75% 59%;       /* AI Accent #6366f1 */
+  --success: 142 76% 36%;         /* Success Green #16a34a */
+  --danger: 346 84% 61%;          /* Danger Red #f43f5e */
 
-  --primary-h: 38;
-  --primary-s: 92%;
-  --primary-l: 48%;
+  --warning: 38 92% 50%;
+  --info: 212 90% 48%;
 
-  --accent-h: 36;
-  --accent-s: 94%;
-  --accent-l: 52%;
+  /* Semantic HSL Token Bridges */
+  --background: hsl(var(--bg-app));
+  --foreground: hsl(var(--text-main));
+  --card-bg: hsl(var(--card));
+  --card-foreground: hsl(var(--text-main));
+  --popover: hsl(var(--card));
+  --popover-foreground: hsl(var(--text-main));
 
-  --muted-h: 220;
-  --muted-s: 14%;
-  --muted-l: 96%;
+  --primary-color: hsl(var(--primary));
+  --primary-foreground: hsl(0 0% 100%);
 
-  --muted-fg-h: 220;
-  --muted-fg-s: 10%;
-  --muted-fg-l: 46%;
+  --secondary: hsl(210 40% 96%);
+  --secondary-foreground: hsl(222 47% 11%);
 
-  /* Semantic HSL Tokens */
-  --background: hsl(var(--bg-h), var(--bg-s), var(--bg-l));
-  --foreground: hsl(var(--fg-h), var(--fg-s), var(--fg-l));
-  --card: hsl(var(--card-h), var(--card-s), var(--card-l));
-  --card-foreground: hsl(var(--fg-h), var(--fg-s), var(--fg-l));
-  --popover: hsl(var(--card-h), var(--card-s), var(--card-l));
-  --popover-foreground: hsl(var(--fg-h), var(--fg-s), var(--fg-l));
+  --accent: hsl(var(--accent-ai));
+  --accent-foreground: hsl(0 0% 100%);
+  --accent-light: hsl(243 100% 97%);
 
-  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-  --primary-foreground: hsl(0, 0%, 100%);
-  --primary-light: hsl(var(--primary-h), 85%, 94%);
-  --primary-dark: hsl(var(--primary-h), 80%, 28%);
+  --muted: hsl(210 40% 96%);
+  --muted-foreground: hsl(var(--text-muted));
 
-  --secondary: hsl(40, 20%, 94%);
-  --secondary-foreground: hsl(220, 20%, 20%);
+  --border: hsl(var(--card-border));
+  --input: hsl(var(--card-border));
+  --ring: hsl(var(--primary));
+  --ring-offset: hsl(var(--card));
 
-  --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
-  --accent-foreground: hsl(25, 80%, 15%);
-  --accent-light: hsl(var(--accent-h), 90%, 94%);
+  /* Functional Status Surface Bridges */
+  --success-bg: hsl(142 70% 96%);
+  --success-border: hsl(142 60% 86%);
 
-  --muted: hsl(var(--muted-h), var(--muted-s), var(--muted-l));
-  --muted-foreground: hsl(var(--muted-fg-h), var(--muted-fg-s), var(--muted-fg-l));
+  --warning-bg: hsl(38 100% 96%);
+  --warning-border: hsl(38 90% 86%);
 
-  --border: hsl(var(--border-h), var(--border-s), var(--border-l));
-  --input: hsl(var(--border-h), var(--border-s), var(--border-l));
-  --ring: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-  --ring-offset: hsl(0, 0%, 100%);
+  --danger-bg: hsl(346 100% 96%);
+  --danger-border: hsl(346 80% 88%);
 
-  /* Functional Status Colors */
-  --success: hsl(152, 68%, 34%);
-  --success-foreground: hsl(0, 0%, 100%);
-  --success-bg: hsl(148, 62%, 94%);
-  --success-border: hsl(150, 48%, 82%);
+  --info-bg: hsl(212 100% 96%);
+  --info-border: hsl(212 80% 88%);
 
-  --warning: hsl(38, 92%, 48%);
-  --warning-foreground: hsl(32, 85%, 20%);
-  --warning-bg: hsl(42, 95%, 94%);
-  --warning-border: hsl(40, 75%, 82%);
-
-  --danger: hsl(0, 72%, 51%);
-  --danger-foreground: hsl(0, 0%, 100%);
-  --danger-bg: hsl(0, 85%, 96%);
-  --danger-border: hsl(0, 70%, 86%);
-
-  --info: hsl(212, 90%, 48%);
-  --info-foreground: hsl(0, 0%, 100%);
-  --info-bg: hsl(210, 85%, 95%);
-  --info-border: hsl(210, 70%, 85%);
-
-  /* Mode Header Background & Pending Indicator */
-  --header-bg: hsl(30, 45%, 22%);
-  --pending-dot: hsl(42, 95%, 48%);
+  /* Header & Indicators */
+  --header-bg: hsl(222 47% 11%);
+  --pending-dot: hsl(var(--primary));
 
   /* Typography Stacks */
   --font-head: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
-  /* Backward Compatibility Bridges */
-  --text-main: var(--foreground);
-  --text-muted: var(--muted-foreground);
+  /* Backward Compatibility Tokens */
   --bg-page: var(--background);
-  --bg-elevated: var(--card);
-  --card-bg: var(--card);
-  --card-border: var(--border);
+  --bg-elevated: var(--card-bg);
 
   /* Border Radius System */
   --radius-xs: 6px;
@@ -118,141 +91,93 @@
   --radius-pill: 9999px;
   --radius: var(--radius-md);
 
-  /* Spring Physics & Motion Easings */
-  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --ease-spring-smooth: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-spring-snappy: cubic-bezier(0.19, 1, 0.22, 1);
-  --ease-spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-out-quad: cubic-bezier(0.25, 0.8, 0.25, 1);
-  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-
-  --duration-instant: 100ms;
+  /* Tactile Micro-Animations & Spring Physics */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --duration-slow: 380ms;
+  --duration-normal: 200ms;
+  --duration-slow: 350ms;
 
-  --transition-fast: all var(--duration-fast) var(--ease-spring-smooth);
-  --transition-normal: all var(--duration-normal) var(--ease-spring-smooth);
-  --transition-spring: transform var(--duration-normal) var(--ease-spring), box-shadow var(--duration-normal) var(--ease-spring-smooth);
+  --transition-fast: all var(--duration-fast) var(--ease-spring);
+  --transition-normal: all var(--duration-normal) var(--ease-spring);
+  --transition-spring: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Multi-layered Ambient & Directional Shadow Architecture */
-  --shadow-color: 220 30% 12%;
+  /* Luxury Multi-Layered Elevation Shadows */
+  --shadow-color: 222 47% 11%;
   --shadow-elevation-0: none;
-  --shadow-elevation-1: 0 1px 2px 0 hsl(var(--shadow-color) / 0.04), 0 1px 3px 0 hsl(var(--shadow-color) / 0.03);
-  --shadow-elevation-2: 0 4px 10px -1px hsl(var(--shadow-color) / 0.06), 0 2px 5px -1px hsl(var(--shadow-color) / 0.03);
-  --shadow-elevation-3: 0 10px 20px -3px hsl(var(--shadow-color) / 0.08), 0 4px 8px -2px hsl(var(--shadow-color) / 0.04);
-  --shadow-elevation-4: 0 18px 32px -5px hsl(var(--shadow-color) / 0.11), 0 8px 14px -3px hsl(var(--shadow-color) / 0.05);
-  --shadow-elevation-5: 0 26px 48px -8px hsl(var(--shadow-color) / 0.16), 0 12px 20px -4px hsl(var(--shadow-color) / 0.07);
+  --shadow-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.03);
+  --shadow-elevation-2: 0 4px 14px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-elevation-3: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.03);
+  --shadow-elevation-4: 0 20px 48px -6px rgba(15, 23, 42, 0.12), 0 8px 20px rgba(15, 23, 42, 0.04);
 
   --shadow-sm: var(--shadow-elevation-1);
   --shadow-md: var(--shadow-elevation-2);
   --shadow-lg: var(--shadow-elevation-3);
   --shadow-xl: var(--shadow-elevation-4);
-  --shadow-2xl: var(--shadow-elevation-5);
 
   /* Focus Ring Specs */
   --ring-width: 2px;
   --ring-offset-width: 2px;
-  --focus-ring-shadow: 0 0 0 var(--ring-offset-width) var(--ring-offset), 0 0 0 calc(var(--ring-offset-width) + var(--ring-width)) var(--ring);
+  --focus-ring-shadow: 0 0 0 var(--ring-offset-width) hsl(var(--card)), 0 0 0 calc(var(--ring-offset-width) + var(--ring-width)) hsl(var(--primary));
 }
 
 /* --------------------------------------------------------------------------
-   2. Mode Custom Properties: Chakki Mode (Warm Wheat Golden)
+   2. Mode Custom Properties: Chakki & Spellar Modes
    -------------------------------------------------------------------------- */
 [data-mode="chakki"] {
-  --primary-h: 38;
-  --primary-s: 88%;
-  --primary-l: 48%;
-
-  --accent-h: 35;
-  --accent-s: 92%;
-  --accent-l: 52%;
-
-  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-  --primary-light: hsl(38, 85%, 93%);
-  --primary-dark: hsl(30, 75%, 28%);
-  --header-bg: hsl(28, 48%, 20%);
-  --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
-  --card-bg: hsl(0, 0%, 100%);
-  --card-border: hsl(36, 26%, 88%);
-  --pending-dot: hsl(42, 95%, 48%);
-  --ring: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+  --primary: 38 92% 50%;
+  --primary-hover: 38 92% 45%;
+  --primary-light: 38 100% 96%;
+  --primary-dark: 32 95% 38%;
+  --header-bg: hsl(30 45% 20%);
 }
 
-/* --------------------------------------------------------------------------
-   3. Mode Custom Properties: Spellar Mode (Deep Olive Forest Green)
-   -------------------------------------------------------------------------- */
 [data-mode="spellar"] {
-  --primary-h: 88;
-  --primary-s: 50%;
-  --primary-l: 36%;
-
-  --accent-h: 48;
-  --accent-s: 90%;
-  --accent-l: 48%;
-
-  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-  --primary-light: hsl(88, 38%, 92%);
-  --primary-dark: hsl(88, 56%, 20%);
-  --header-bg: hsl(88, 44%, 18%);
-  --accent: hsl(var(--accent-h), var(--accent-s), var(--accent-l));
-  --card-bg: hsl(0, 0%, 100%);
-  --card-border: hsl(85, 18%, 87%);
-  --pending-dot: hsl(42, 95%, 48%);
-  --ring: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+  --primary: 88 50% 36%;
+  --primary-hover: 88 50% 30%;
+  --primary-light: 88 38% 92%;
+  --primary-dark: 88 56% 20%;
+  --header-bg: hsl(88 44% 18%);
 }
 
 /* --------------------------------------------------------------------------
-   4. Dark Mode Overrides
+   3. Dark Mode Overrides
    -------------------------------------------------------------------------- */
 [data-theme="dark"] {
-  --shadow-color: 0 0% 0%;
+  --bg-app: 224 25% 9%;
+  --card: 224 22% 13%;
+  --card-border: 222 16% 22%;
+  --text-main: 210 25% 96%;
+  --text-muted: 218 14% 65%;
 
-  --background: hsl(224, 25%, 9%);
-  --foreground: hsl(210, 25%, 96%);
-  --card: hsl(224, 22%, 13%);
-  --card-foreground: hsl(210, 25%, 96%);
-  --popover: hsl(224, 22%, 13%);
-  --popover-foreground: hsl(210, 25%, 96%);
+  --muted: hsl(222 18% 16%);
+  --muted-foreground: hsl(218 14% 65%);
 
-  --muted: hsl(222, 18%, 16%);
-  --muted-foreground: hsl(218, 14%, 65%);
+  --header-bg: hsl(224 30% 8%);
 
-  --border: hsl(222, 16%, 22%);
-  --input: hsl(222, 16%, 22%);
-  --ring-offset: hsl(224, 25%, 9%);
+  --shadow-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.4), 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  --shadow-elevation-2: 0 4px 14px rgba(0, 0, 0, 0.5);
 
-  --text-main: var(--foreground);
-  --text-muted: var(--muted-foreground);
-  --bg-page: var(--background);
-  --bg-elevated: var(--card);
-  --card-bg: var(--card);
-  --card-border: var(--border);
-
-  --success-bg: hsl(150, 40%, 14%);
-  --warning-bg: hsl(38, 45%, 14%);
-  --danger-bg: hsl(0, 45%, 14%);
-  --info-bg: hsl(210, 45%, 14%);
+  --success-bg: hsl(142 40% 14%);
+  --warning-bg: hsl(38 45% 14%);
+  --danger-bg: hsl(346 45% 14%);
+  --info-bg: hsl(212 45% 14%);
 }
 
 [data-mode="chakki"][data-theme="dark"] {
-  --card-bg: hsl(30, 20%, 14%);
-  --card-border: hsl(30, 20%, 22%);
-  --primary-light: hsl(34, 30%, 20%);
-  --primary-dark: hsl(38, 80%, 65%);
-  --header-bg: hsl(30, 32%, 12%);
+  --card: 30 20% 14%;
+  --card-border: 30 20% 22%;
+  --header-bg: hsl(30 32% 12%);
 }
 
 [data-mode="spellar"][data-theme="dark"] {
-  --card-bg: hsl(88, 18%, 13%);
-  --card-border: hsl(88, 18%, 22%);
-  --primary-light: hsl(88, 26%, 19%);
-  --primary-dark: hsl(88, 55%, 62%);
-  --header-bg: hsl(88, 30%, 11%);
+  --card: 88 18% 13%;
+  --card-border: 88 18% 22%;
+  --header-bg: hsl(88 30% 11%);
 }
 
 /* --------------------------------------------------------------------------
-   5. Reset & High-Fidelity Base Typography
+   4. Reset & High-Fidelity Base Typography
    -------------------------------------------------------------------------- */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -269,8 +194,8 @@ html {
 
 body {
   font-family: var(--font-body);
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: hsl(var(--bg-app));
+  color: hsl(var(--text-main));
   line-height: 1.5;
   min-height: 100vh;
   padding-bottom: 74px;
@@ -278,15 +203,15 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color var(--duration-normal) var(--ease-standard),
-              color var(--duration-normal) var(--ease-standard);
+  transition: background-color var(--duration-normal) var(--ease-spring),
+              color var(--duration-normal) var(--ease-spring);
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-head);
   font-weight: 700;
   letter-spacing: -0.025em;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   line-height: 1.25;
 }
 
@@ -296,7 +221,7 @@ h3 { font-size: clamp(1.15rem, 2.5vw, 1.4rem); font-weight: 700; }
 h4 { font-size: 1.05rem; font-weight: 600; }
 
 p {
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   line-height: 1.55;
 }
 
@@ -306,8 +231,34 @@ a {
 }
 
 ::selection {
-  background-color: var(--primary-light);
-  color: var(--primary-dark);
+  background-color: hsl(var(--primary-light));
+  color: hsl(var(--primary-dark));
+}
+
+/* --------------------------------------------------------------------------
+   5. Inviolable Touch Target Enforcement (48px Minimum Height)
+   -------------------------------------------------------------------------- */
+button,
+.btn,
+.mode-toggle-btn,
+.pill-btn,
+.big-btn,
+.btn-secondary-action,
+.form-input,
+.input-field,
+.search-bar,
+.bottom-nav-item {
+  min-height: 48px;
+}
+
+.badge,
+.badge-sm,
+.status-pill,
+.header-live-pill,
+.header-user-chip,
+.header-dot-sep,
+.badge-dot {
+  min-height: auto;
 }
 
 /* --------------------------------------------------------------------------
@@ -316,12 +267,12 @@ a {
 *:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring-shadow);
-  transition: box-shadow var(--duration-fast) var(--ease-spring-smooth);
+  transition: box-shadow var(--duration-fast) var(--ease-spring);
 }
 
 .focus-ring {
   outline: none;
-  transition: box-shadow var(--duration-fast) var(--ease-spring-smooth);
+  transition: box-shadow var(--duration-fast) var(--ease-spring);
 }
 
 .focus-ring:focus-visible {
@@ -349,21 +300,19 @@ table {
 }
 
 /* --------------------------------------------------------------------------
-   8. Card Elevation Levels & Surfaces
+   8. Luxury Card Styling, Elevation Shadows & Glassmorphism
    -------------------------------------------------------------------------- */
 .card {
-  background: var(--card);
-  color: var(--card-foreground);
-  border: 1px solid var(--border);
+  background: hsl(var(--card));
+  color: hsl(var(--text-main));
+  border: 1px solid hsl(var(--card-border));
   border-radius: var(--radius);
   padding: 16px;
   box-shadow: var(--shadow-elevation-1);
-  transition: box-shadow var(--duration-normal) var(--ease-spring-smooth),
-              border-color var(--duration-normal) var(--ease-spring-smooth),
-              transform var(--duration-normal) var(--ease-spring);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Card Elevation Utilities */
+/* Elevation Utilities */
 .elevation-0, .card-elevation-0, .card-flat {
   box-shadow: var(--shadow-elevation-0);
 }
@@ -384,41 +333,37 @@ table {
   box-shadow: var(--shadow-elevation-4);
 }
 
-.elevation-5, .card-elevation-5 {
-  box-shadow: var(--shadow-elevation-5);
-}
-
 /* Interactive Card with Spring Physics */
 .card-interactive {
   cursor: pointer;
   will-change: transform, box-shadow;
-  transition: transform var(--duration-normal) var(--ease-spring),
-              box-shadow var(--duration-normal) var(--ease-spring-smooth),
-              border-color var(--duration-normal) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card-interactive:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-elevation-3);
-  border-color: var(--primary);
+  box-shadow: var(--shadow-elevation-2);
+  border-color: hsl(var(--primary));
 }
 
 .card-interactive:active {
-  transform: scale(0.985) translateY(0);
+  transform: scale(0.97) translateY(0);
   box-shadow: var(--shadow-elevation-1);
 }
 
-/* Glassmorphism Surface */
-.card-glass {
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(14px) saturate(180%);
-  -webkit-backdrop-filter: blur(14px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: var(--shadow-elevation-2);
+/* Glassmorphism Backdrop Blur Surfaces */
+.card-glass,
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid hsl(var(--card-border) / 0.6);
+  box-shadow: var(--shadow-elevation-1);
 }
 
-[data-theme="dark"] .card-glass {
-  background: rgba(22, 28, 38, 0.78);
+[data-theme="dark"] .card-glass,
+[data-theme="dark"] .glassmorphism {
+  background: rgba(22, 28, 38, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -439,7 +384,7 @@ table {
   letter-spacing: 0.02em;
   white-space: nowrap;
   border: 1px solid transparent;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .badge-pill {
@@ -458,9 +403,9 @@ table {
 }
 
 .badge-primary {
-  background: var(--primary-light);
-  color: var(--primary-dark);
-  border-color: hsl(var(--primary-h), 65%, 82%);
+  background: hsl(var(--primary-light));
+  color: hsl(var(--primary-dark));
+  border-color: hsl(var(--primary) / 0.3);
 }
 
 .badge-secondary {
@@ -469,39 +414,39 @@ table {
   border-color: var(--border);
 }
 
-.badge-accent {
-  background: var(--accent-light);
-  color: var(--accent-foreground);
-  border-color: hsl(var(--accent-h), 70%, 82%);
+.badge-ai {
+  background: hsl(var(--accent-ai) / 0.12);
+  color: hsl(var(--accent-ai));
+  border-color: hsl(var(--accent-ai) / 0.3);
 }
 
 .badge-success {
   background: var(--success-bg);
-  color: var(--success);
+  color: hsl(var(--success));
   border-color: var(--success-border);
 }
 
 .badge-warning {
   background: var(--warning-bg);
-  color: var(--warning-foreground);
+  color: hsl(var(--warning));
   border-color: var(--warning-border);
 }
 
 .badge-danger, .badge-destructive {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: hsl(var(--danger));
   border-color: var(--danger-border);
 }
 
 .badge-info {
   background: var(--info-bg);
-  color: var(--info);
+  color: hsl(var(--info));
   border-color: var(--info-border);
 }
 
 .badge-outline {
   background: transparent;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   border-color: var(--border);
 }
 
@@ -512,10 +457,9 @@ table {
   background-color: currentColor;
 }
 
-/* Legacy Section Badges */
 .section-badge {
-  background: var(--primary-light);
-  color: var(--primary-dark);
+  background: hsl(var(--primary-light));
+  color: hsl(var(--primary-dark));
   padding: 3px 10px;
   border-radius: var(--radius-pill);
   font-family: var(--font-head);
@@ -527,7 +471,6 @@ table {
   gap: 4px;
 }
 
-/* Status Pills */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -542,25 +485,25 @@ table {
 
 .status-pill.cash {
   background: var(--success-bg);
-  color: var(--success);
+  color: hsl(var(--success));
   border-color: var(--success-border);
 }
 
 .status-pill.upi {
   background: var(--info-bg);
-  color: var(--info);
+  color: hsl(var(--info));
   border-color: var(--info-border);
 }
 
 .status-pill.credit {
   background: var(--danger-bg);
-  color: var(--danger);
+  color: hsl(var(--danger));
   border-color: var(--danger-border);
 }
 
 .status-pill.pending {
   background: var(--warning-bg);
-  color: var(--warning-foreground);
+  color: hsl(var(--warning));
   border-color: var(--warning-border);
 }
 
@@ -590,7 +533,7 @@ table {
   background: var(--header-bg);
   padding: 8px 16px 14px 16px;
   box-shadow: var(--shadow-elevation-2);
-  transition: background var(--duration-normal) var(--ease-standard);
+  transition: background var(--duration-normal) var(--ease-spring);
 }
 
 .mode-toggle {
@@ -600,11 +543,13 @@ table {
   border-radius: var(--radius);
   padding: 4px;
   gap: 6px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .mode-toggle-btn {
   height: 52px;
+  min-height: 48px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
@@ -616,25 +561,25 @@ table {
   font-family: var(--font-head);
   outline: none;
   will-change: transform, background, color;
-  transition: all var(--duration-normal) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .mode-toggle-btn.active {
-  background: var(--primary);
+  background: hsl(var(--primary));
   color: #ffffff;
   box-shadow: var(--shadow-elevation-2);
   transform: translateY(-1px);
 }
 
 .mode-toggle-btn.active-chakki {
-  background: linear-gradient(135deg, hsl(38, 88%, 50%), hsl(30, 85%, 40%));
+  background: linear-gradient(135deg, hsl(38 92% 50%), hsl(32 95% 38%));
   color: #ffffff;
-  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.4);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
 
 .mode-toggle-btn.active-spellar {
-  background: linear-gradient(135deg, hsl(85, 52%, 40%), hsl(85, 60%, 28%));
+  background: linear-gradient(135deg, hsl(88 50% 40%), hsl(88 60% 28%));
   color: #ffffff;
   box-shadow: 0 4px 14px rgba(85, 110, 30, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.25);
@@ -665,7 +610,7 @@ table {
 
 .mode-lucide-icon {
   flex-shrink: 0;
-  transition: transform var(--duration-fast) var(--ease-spring-smooth);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .mode-toggle-btn:hover .mode-lucide-icon {
@@ -688,22 +633,21 @@ table {
 .search-bar {
   width: 100%;
   height: 48px;
-  background: var(--card);
-  border: 1.5px solid var(--border);
+  min-height: 48px;
+  background: hsl(var(--card));
+  border: 1.5px solid hsl(var(--card-border));
   border-radius: var(--radius-pill);
   padding: 0 16px 0 44px;
   font-size: 0.95rem;
   font-family: var(--font-body);
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   outline: none;
   box-shadow: var(--shadow-elevation-1);
-  transition: border-color var(--duration-fast) var(--ease-spring-smooth),
-              box-shadow var(--duration-fast) var(--ease-spring-smooth),
-              background var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .search-bar:focus {
-  border-color: var(--primary);
+  border-color: hsl(var(--primary));
   box-shadow: var(--focus-ring-shadow);
 }
 
@@ -743,8 +687,8 @@ table {
 }
 
 .stat-card {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--card-border));
   border-radius: var(--radius);
   padding: 14px 10px;
   display: flex;
@@ -752,12 +696,11 @@ table {
   align-items: center;
   text-align: center;
   box-shadow: var(--shadow-elevation-1);
-  transition: transform var(--duration-normal) var(--ease-spring),
-              box-shadow var(--duration-normal) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .stat-card:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-elevation-2);
 }
 
@@ -766,7 +709,7 @@ table {
   font-size: 1.75rem;
   font-weight: 800;
   line-height: 1.15;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
 }
 
 .stat-card .stat-label {
@@ -797,9 +740,9 @@ table {
    15. Bori Cards (Queue & Ledger Items)
    -------------------------------------------------------------------------- */
 .bori-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-left: 5px solid var(--pending-dot);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--card-border));
+  border-left: 5px solid hsl(var(--primary));
   border-radius: var(--radius);
   padding: 14px 16px;
   min-height: 52px;
@@ -808,32 +751,32 @@ table {
   align-items: center;
   box-shadow: var(--shadow-elevation-1);
   will-change: transform, box-shadow;
-  transition: transform var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bori-card:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-elevation-2);
 }
 
 .bori-card:active {
-  transform: scale(0.99);
+  transform: scale(0.97);
 }
 
 .bori-card-v2 {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--card-border));
   border-radius: var(--radius);
   padding: 16px;
   box-shadow: var(--shadow-elevation-1);
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: transform var(--duration-fast) var(--ease-spring),
-              box-shadow var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bori-card-v2:hover {
+  transform: translateY(-2px);
   box-shadow: var(--shadow-elevation-2);
 }
 
@@ -847,7 +790,7 @@ table {
   font-family: var(--font-head);
   font-size: 1rem;
   font-weight: 700;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -860,10 +803,11 @@ table {
 }
 
 .bori-done-btn {
-  height: 42px;
+  height: 48px;
+  min-height: 48px;
   min-width: 92px;
   padding: 0 16px;
-  background: var(--success);
+  background: hsl(var(--success));
   color: #ffffff;
   font-family: var(--font-head);
   font-weight: 700;
@@ -878,11 +822,12 @@ table {
   box-shadow: var(--shadow-elevation-1);
   outline: none;
   will-change: transform;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bori-done-btn:hover {
   filter: brightness(1.06);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-elevation-2);
 }
 
@@ -895,20 +840,21 @@ table {
    16. Completed Entry Rows
    -------------------------------------------------------------------------- */
 .entry-row {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--card-border));
   border-radius: var(--radius-sm);
   padding: 12px 14px;
+  min-height: 48px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow: var(--shadow-elevation-1);
-  transition: transform var(--duration-fast) var(--ease-spring),
-              background var(--duration-fast) var(--ease-standard);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .entry-row:hover {
-  background: hsl(var(--bg-h), 25%, 96%);
+  background: hsl(var(--bg-app));
+  transform: translateY(-1px);
 }
 
 .entry-row-left {
@@ -935,11 +881,12 @@ button {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  will-change: transform;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 button:active {
   transform: scale(0.97);
-  transition: transform var(--duration-instant) var(--ease-spring-snappy);
 }
 
 .btn {
@@ -952,20 +899,22 @@ button:active {
   font-weight: 700;
   border-radius: var(--radius-sm);
   padding: 10px 18px;
+  min-height: 48px;
   cursor: pointer;
   outline: none;
   will-change: transform;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: hsl(var(--primary));
   color: #ffffff;
   box-shadow: var(--shadow-elevation-1);
 }
 
 .btn-primary:hover {
   filter: brightness(1.05);
+  transform: translateY(-1px);
   box-shadow: var(--shadow-elevation-2);
 }
 
@@ -975,13 +924,14 @@ button:active {
 
 .btn-outline {
   background: transparent;
-  color: var(--foreground);
-  border: 1.5px solid var(--border);
+  color: hsl(var(--text-main));
+  border: 1.5px solid hsl(var(--card-border));
 }
 
 .btn-outline:hover {
-  border-color: var(--primary);
+  border-color: hsl(var(--primary));
   background: var(--muted);
+  transform: translateY(-1px);
 }
 
 .btn-outline:active {
@@ -990,7 +940,7 @@ button:active {
 
 .btn-ghost {
   background: transparent;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
 }
 
 .btn-ghost:hover {
@@ -998,12 +948,13 @@ button:active {
 }
 
 .btn-danger {
-  background: var(--danger);
+  background: hsl(var(--danger));
   color: #ffffff;
 }
 
 .btn-danger:hover {
   filter: brightness(1.05);
+  transform: translateY(-1px);
 }
 
 /* Big Action Button */
@@ -1011,7 +962,7 @@ button:active {
   width: 100%;
   min-height: 52px;
   height: 52px;
-  background: var(--primary);
+  background: hsl(var(--primary));
   color: #ffffff;
   font-family: var(--font-head);
   font-size: 1.05rem;
@@ -1027,13 +978,13 @@ button:active {
   box-shadow: var(--shadow-elevation-2);
   outline: none;
   will-change: transform, filter;
-  transition: all var(--duration-normal) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .big-btn:hover {
   filter: brightness(1.05);
   box-shadow: var(--shadow-elevation-3);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 .big-btn:active {
@@ -1048,9 +999,9 @@ button:active {
 .btn-secondary-action {
   width: 100%;
   min-height: 48px;
-  background: var(--primary-light);
-  color: var(--primary-dark);
-  border: 1.5px solid var(--border);
+  background: hsl(var(--primary-light));
+  color: hsl(var(--primary-dark));
+  border: 1.5px solid hsl(var(--card-border));
   border-radius: var(--radius);
   font-family: var(--font-head);
   font-size: 0.95rem;
@@ -1061,11 +1012,12 @@ button:active {
   justify-content: center;
   gap: 6px;
   outline: none;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-secondary-action:hover {
   filter: brightness(0.97);
+  transform: translateY(-1px);
 }
 
 .btn-secondary-action:active {
@@ -1080,7 +1032,7 @@ button:active {
   font-family: var(--font-head);
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   margin-bottom: 6px;
   display: block;
 }
@@ -1089,22 +1041,21 @@ button:active {
 .input-field {
   width: 100%;
   height: 48px;
+  min-height: 48px;
   padding: 0 14px;
   font-size: 0.95rem;
   font-family: var(--font-body);
-  border: 1.5px solid var(--border);
+  border: 1.5px solid hsl(var(--card-border));
   border-radius: var(--radius-sm);
-  background: var(--card);
-  color: var(--foreground);
+  background: hsl(var(--card));
+  color: hsl(var(--text-main));
   outline: none;
-  transition: border-color var(--duration-fast) var(--ease-spring-smooth),
-              box-shadow var(--duration-fast) var(--ease-spring-smooth),
-              background var(--duration-fast) var(--ease-standard);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .form-input:focus,
 .input-field:focus {
-  border-color: var(--primary);
+  border-color: hsl(var(--primary));
   box-shadow: var(--focus-ring-shadow);
 }
 
@@ -1115,8 +1066,8 @@ select.input-field {
 
 /* Big Hero Input for Weight Display */
 .hero-input-container {
-  background: var(--card);
-  border: 2px solid var(--border);
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--card-border));
   border-radius: var(--radius);
   padding: 14px 16px;
   display: flex;
@@ -1124,12 +1075,11 @@ select.input-field {
   align-items: center;
   justify-content: center;
   text-align: center;
-  transition: border-color var(--duration-fast) var(--ease-spring-smooth),
-              box-shadow var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-input-container:focus-within {
-  border-color: var(--primary);
+  border-color: hsl(var(--primary));
   box-shadow: var(--focus-ring-shadow);
 }
 
@@ -1141,7 +1091,7 @@ select.input-field {
   font-family: var(--font-head);
   font-size: 2.35rem;
   font-weight: 800;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
   outline: none;
 }
 
@@ -1167,9 +1117,9 @@ select.input-field {
   min-height: 48px;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border: 1.5px solid var(--border);
-  background: var(--card);
-  color: var(--foreground);
+  border: 1.5px solid hsl(var(--card-border));
+  background: hsl(var(--card));
+  color: hsl(var(--text-main));
   font-family: var(--font-head);
   font-size: 0.85rem;
   font-weight: 700;
@@ -1181,12 +1131,13 @@ select.input-field {
   gap: 5px;
   outline: none;
   will-change: transform;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .pill-btn:hover {
-  border-color: var(--primary);
+  border-color: hsl(var(--primary));
   background: var(--muted);
+  transform: translateY(-1px);
 }
 
 .pill-btn:active {
@@ -1194,8 +1145,8 @@ select.input-field {
 }
 
 .pill-btn.active {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
   color: #ffffff;
   box-shadow: var(--shadow-elevation-1);
 }
@@ -1204,8 +1155,8 @@ select.input-field {
    20. Auto-Calculation Summary Box
    -------------------------------------------------------------------------- */
 .calc-summary-box {
-  background: var(--primary-light);
-  border: 1.5px solid var(--border);
+  background: hsl(var(--primary-light));
+  border: 1.5px solid hsl(var(--card-border));
   border-radius: var(--radius);
   padding: 14px 16px;
   display: flex;
@@ -1218,11 +1169,11 @@ select.input-field {
   justify-content: space-between;
   align-items: center;
   font-size: 0.9rem;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
 }
 
 .calc-row.highlight {
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed hsl(var(--card-border));
   padding-top: 8px;
   font-weight: 800;
   font-size: 1.05rem;
@@ -1245,7 +1196,7 @@ select.input-field {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  transition: background var(--duration-normal) var(--ease-standard);
+  transition: background var(--duration-normal) var(--ease-spring);
   gap: 8px;
 }
 
@@ -1258,8 +1209,8 @@ select.input-field {
 }
 
 .header-logo-container {
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 9px;
   overflow: hidden;
   flex-shrink: 0;
@@ -1375,8 +1326,9 @@ select.input-field {
 }
 
 .header-action-btn {
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.12);
@@ -1386,7 +1338,7 @@ select.input-field {
   justify-content: center;
   cursor: pointer;
   outline: none;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .header-action-btn:hover {
@@ -1400,7 +1352,7 @@ select.input-field {
 
 .header-action-btn.active {
   background: #ffffff;
-  color: var(--primary-dark);
+  color: hsl(var(--primary-dark));
 }
 
 .header-action-btn.logout-action-btn:hover {
@@ -1457,6 +1409,7 @@ select.input-field {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-sm);
   padding: 6px 12px;
+  min-height: 48px;
 }
 
 .header-search-input-icon {
@@ -1472,6 +1425,7 @@ select.input-field {
   color: #ffffff;
   font-size: 0.88rem;
   font-family: var(--font-body);
+  min-height: 48px;
 }
 
 .header-search-input::placeholder {
@@ -1489,6 +1443,8 @@ select.input-field {
   justify-content: center;
   padding: 2px;
   border-radius: 4px;
+  min-height: 48px;
+  min-width: 48px;
   transition: color var(--duration-fast);
 }
 
@@ -1502,8 +1458,8 @@ select.input-field {
   top: 100%;
   left: 16px;
   right: 16px;
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--card-border));
   border-radius: var(--radius);
   box-shadow: var(--shadow-elevation-4);
   max-height: 280px;
@@ -1540,8 +1496,9 @@ select.input-field {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  min-height: 48px;
   transition: background var(--duration-fast);
-  color: var(--foreground);
+  color: hsl(var(--text-main));
 }
 
 .search-result-row:hover {
@@ -1556,7 +1513,7 @@ select.input-field {
 .search-result-row .result-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--foreground);
+  color: hsl(var(--text-main));
 }
 
 .search-result-row .result-sub {
@@ -1569,9 +1526,9 @@ select.input-field {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: hsl(0, 80%, 94%);
-  color: hsl(0, 75%, 42%);
-  border: 1px solid hsl(0, 80%, 88%);
+  background: hsl(346 100% 96%);
+  color: hsl(var(--danger));
+  border: 1px solid hsl(346 80% 88%);
 }
 
 .result-paid-pill {
@@ -1579,9 +1536,9 @@ select.input-field {
   font-weight: 700;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: hsl(142, 60%, 94%);
-  color: hsl(142, 70%, 35%);
-  border: 1px solid hsl(142, 60%, 88%);
+  background: hsl(142 70% 96%);
+  color: hsl(var(--success));
+  border: 1px solid hsl(142 60% 86%);
 }
 
 .result-status-pill {
@@ -1594,12 +1551,12 @@ select.input-field {
 }
 
 .result-status-pill.ready {
-  background: hsl(142, 60%, 94%);
-  color: hsl(142, 70%, 35%);
+  background: hsl(142 70% 96%);
+  color: hsl(var(--success));
 }
 
 /* --------------------------------------------------------------------------
-   22. Bottom Navigation Bar (Fixed 62px, 6-Col Grid, Active Tab Indicator Pills)
+   22. Bottom Navigation Bar (Fixed 62px, 6-Col Grid, Touch Targets)
    -------------------------------------------------------------------------- */
 .bottom-nav {
   position: fixed;
@@ -1608,19 +1565,20 @@ select.input-field {
   right: 0;
   z-index: 100;
   height: 62px;
-  background: var(--card);
-  border-top: 1px solid var(--border);
+  background: hsl(var(--card));
+  border-top: 1px solid hsl(var(--card-border));
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   align-items: center;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .bottom-nav-item {
   height: 100%;
+  min-height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1633,7 +1591,7 @@ select.input-field {
   text-decoration: none;
   outline: none;
   padding: 4px 0;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -1647,26 +1605,26 @@ select.input-field {
   justify-content: center;
   border-radius: var(--radius-pill);
   padding: 3px 12px;
-  transition: all var(--duration-normal) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .bottom-nav-item.active .nav-icon-pill {
-  background: var(--primary-light);
+  background: hsl(var(--primary-light));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .bottom-nav-item.active .nav-icon {
-  color: var(--primary);
+  color: hsl(var(--primary));
   transform: translateY(-1px);
 }
 
 .bottom-nav-item .nav-icon {
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   color: var(--muted-foreground);
 }
 
 .bottom-nav-item.active .nav-label {
-  color: var(--primary);
+  color: hsl(var(--primary));
   font-weight: 700;
   transform: translateY(-1px);
 }
@@ -1675,7 +1633,7 @@ select.input-field {
   font-family: var(--font-head);
   font-size: 0.68rem;
   font-weight: 500;
-  transition: all var(--duration-fast) var(--ease-spring-smooth);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   color: var(--muted-foreground);
   letter-spacing: 0.01em;
 }
@@ -1689,25 +1647,26 @@ select.input-field {
 }
 
 [data-theme="dark"] .bottom-nav-item.active .nav-icon-pill {
-  background: var(--primary-light);
+  background: hsl(var(--primary-light));
 }
 
 /* --------------------------------------------------------------------------
-   23. Floating Action Button (FAB) & ChakkiBot AI Highlighted Tab Overhaul
+   23. Floating Action Button (FAB) & ChakkiBot AI Highlighted Tab
    -------------------------------------------------------------------------- */
 .fab-btn {
   position: fixed;
   bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
   right: 18px !important;
+  min-height: 48px;
   will-change: transform, box-shadow;
-  transition: transform var(--duration-normal) var(--ease-spring),
-              box-shadow var(--duration-normal) var(--ease-spring-smooth),
-              background var(--duration-fast) ease;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.15s ease;
 }
 
 .fab-btn:hover {
   transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 12px 28px -2px rgba(217, 119, 6, 0.65), 0 6px 14px rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 12px 28px -2px rgba(245, 158, 11, 0.65), 0 6px 14px rgba(0, 0, 0, 0.15) !important;
 }
 
 .fab-btn:active {
@@ -1715,7 +1674,7 @@ select.input-field {
 }
 
 .fab-btn.active {
-  box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.35), 0 10px 28px -2px rgba(217, 119, 6, 0.65) !important;
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.35), 0 10px 28px -2px rgba(245, 158, 11, 0.65) !important;
 }
 
 /* FAB Pulse Ring Animation */
@@ -1732,22 +1691,21 @@ select.input-field {
 
 @keyframes fab-glow-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.5);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5);
     opacity: 0.8;
   }
   40% {
-    box-shadow: 0 0 0 12px rgba(217, 119, 6, 0);
+    box-shadow: 0 0 0 12px rgba(245, 158, 11, 0);
     opacity: 0;
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(217, 119, 6, 0);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
     opacity: 0;
   }
 }
 
-/* ChakkiBot AI Highlighted Tab Micro-Animations */
 .nav-tab-item {
-  transition: transform var(--duration-fast) var(--ease-spring-smooth);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .nav-tab-item:active {
@@ -1759,15 +1717,10 @@ select.input-field {
 }
 
 @keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-/* Dark mode bottom nav refinement */
 [data-theme="dark"] .bottom-nav-container {
   background: rgba(15, 23, 42, 0.95) !important;
   border-top-color: rgba(255, 255, 255, 0.08) !important;
@@ -1777,7 +1730,6 @@ select.input-field {
 /* --------------------------------------------------------------------------
    24. Responsive Utility Classes (Flex, Grid, Spacing, Typography)
    -------------------------------------------------------------------------- */
-/* Display & Flexbox */
 .flex { display: flex; }
 .inline-flex { display: inline-flex; }
 .flex-col { flex-direction: column; }
@@ -1791,7 +1743,6 @@ select.input-field {
 .justify-start { justify-content: flex-start; }
 .justify-end { justify-content: flex-end; }
 
-/* Grid */
 .grid { display: grid; }
 .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1810,7 +1761,6 @@ select.input-field {
   }
 }
 
-/* Gaps */
 .gap-1 { gap: 4px; }
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
@@ -1818,12 +1768,10 @@ select.input-field {
 .gap-5 { gap: 20px; }
 .gap-6 { gap: 24px; }
 
-/* Width & Sizing */
 .w-full { width: 100%; }
 .h-full { height: 100%; }
 .min-h-screen { min-height: 100vh; }
 
-/* Spacing Utilities */
 .p-0 { padding: 0; }
 .p-2 { padding: 8px; }
 .p-3 { padding: 12px; }
@@ -1842,7 +1790,6 @@ select.input-field {
 .mb-3 { margin-bottom: 12px; }
 .mb-4 { margin-bottom: 16px; }
 
-/* Typography Helpers */
 .text-xs { font-size: 0.75rem; }
 .text-sm { font-size: 0.875rem; }
 .text-base { font-size: 1rem; }
@@ -1862,9 +1809,10 @@ select.input-field {
 .text-left { text-align: left; }
 
 .text-muted { color: var(--muted-foreground); }
-.text-primary { color: var(--primary); }
-.text-danger { color: var(--danger); }
-.text-success { color: var(--success); }
+.text-primary { color: hsl(var(--primary)); }
+.text-danger { color: hsl(var(--danger)); }
+.text-success { color: hsl(var(--success)); }
+.text-ai { color: hsl(var(--accent-ai)); }
 
 .truncate {
   overflow: hidden;
@@ -1872,7 +1820,6 @@ select.input-field {
   white-space: nowrap;
 }
 
-/* Accessibility: Screen Reader Only */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1908,9 +1855,9 @@ select.input-field {
 }
 
 .animate-pulse {
-  animation: pulse-subtle 2s var(--ease-standard) infinite;
+  animation: pulse-subtle 2s ease-in-out infinite;
 }
 
 .animate-fade-in {
-  animation: fadeIn var(--duration-normal) var(--ease-spring-smooth);
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }

@@ -13,15 +13,17 @@ import {
   Coins, 
   CreditCard, 
   ArrowUpRight, 
-  ArrowDownLeft, 
   Droplets, 
   Droplet, 
   Wheat, 
   X, 
-  AlertCircle,
-  Share2,
-  ShoppingCart,
-  UserPlus
+  Share2, 
+  ShoppingCart, 
+  UserPlus,
+  Copy,
+  FileText,
+  Calculator,
+  Clock
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useTranslation } from '../utils/translations';
@@ -30,6 +32,7 @@ import GaonSelector from '../components/GaonSelector';
 export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const { t } = useTranslation();
   const activeMode = useStore((state) => state.activeMode || 'chakki');
+  const setActiveMode = useStore((state) => state.setActiveMode);
   const shop = useStore((state) => state.shop || {});
   const customers = useStore((state) => state.customers || []);
   const getVillages = useStore((state) => state.getVillages);
@@ -37,10 +40,12 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const addBori = useStore((state) => state.addBori);
   const addStockEntry = useStore((state) => state.addStockEntry);
 
-  // Spellar sub-toggle: 'pirai' | 'khari_sale' | 'owner_stock'
-  const [spellarSubMode, setSpellarSubMode] = useState('pirai');
+  // Operation Selector: 'chakki' | 'spellar' | 'khari_sale' | 'owner_stock'
+  const [operationMode, setOperationMode] = useState(
+    activeMode === 'spellar' ? 'spellar' : 'chakki'
+  );
 
-  // Customer selection / Creation
+  // Customer Selection & Creation
   const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId || '');
   const [customerSearch, setCustomerSearch] = useState('');
   const [selectedVillageFilter, setSelectedVillageFilter] = useState('all');
@@ -70,19 +75,27 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const [stockRate, setStockRate] = useState(55);
   const [stockNotes, setStockNotes] = useState('');
 
-  // Shared Entry status & Payment
+  // Shared Entry Status & Payment
   const [status, setStatus] = useState('pending'); // 'pending' | 'done'
   const [paymentMode, setPaymentMode] = useState('cash'); // 'cash' | 'upi' | 'credit'
   const [notes, setNotes] = useState('');
 
-  // Sync initial rates when shop state or mode changes
+  // Receipt Copy Feedback
+  const [copiedReceipt, setCopiedReceipt] = useState(false);
+
+  // Sync rates when shop state changes
   useEffect(() => {
-    setPisaiRate(shop.chakkiRates?.pisai || 4);
+    if (operationMode === 'chakki') {
+      const key = grainType.toLowerCase();
+      const grainKey = key === 'wheat' ? 'gehun' : key === 'maize' ? 'makka' : key;
+      const r = shop.chakkiRates?.grainRates?.[grainKey] ?? shop.chakkiRates?.pisai ?? 4;
+      setPisaiRate(r);
+    }
     setPiraiRate(shop.spellarRates?.pirai || 12);
     setKhariRate(shop.spellarRates?.khari || 35);
-  }, [shop]);
+  }, [shop, grainType, operationMode]);
 
-  // Set initial customer if passed
+  // Set initial customer if passed from prop
   useEffect(() => {
     if (initialCustomerId) {
       const c = customers.find((cust) => cust.id === initialCustomerId);
@@ -93,7 +106,17 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
     }
   }, [initialCustomerId, customers]);
 
-  // 1-Tap Grain Change Handler
+  // Switch Operation Mode Handler
+  const handleOperationModeChange = (mode) => {
+    setOperationMode(mode);
+    if (mode === 'chakki') {
+      setActiveMode('chakki');
+    } else {
+      setActiveMode('spellar');
+    }
+  };
+
+  // 1-Tap Primary Grain Change Handler
   const handleGrainChange = (newGrainId) => {
     setGrainType(newGrainId);
     setIsKaddaOverridden(false);
@@ -103,6 +126,11 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
     const grainKey = key === 'wheat' ? 'gehun' : key === 'maize' ? 'makka' : key;
     const defaultRate = shop.chakkiRates?.grainRates?.[grainKey] ?? shop.chakkiRates?.pisai ?? 4;
     setPisaiRate(defaultRate);
+
+    // Contextual output label: if Chana, set default output to Atta (which renders as Besan)
+    if (newGrainId === 'Chana' && outputType !== 'Atta' && outputType !== 'Dana' && outputType !== 'Mota Dana') {
+      setOutputType('Atta');
+    }
   };
 
   // Filter customers for autocomplete with village filtering
@@ -124,10 +152,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
   const selectedCustomerObj = customers.find((c) => c.id === selectedCustomerId);
 
-  // Calculate Chakki Kadda & Amounts
+  // Calculations for Chakki Mode
   const weightNum = parseFloat(inputWeight) || 0;
 
-  // Kadda Calculation based on primary grain type
+  // Kadda Calculation per Mann (40kg)
   const kaddaRatePerMann = useMemo(() => {
     const key = grainType.toLowerCase();
     const grainKey = key === 'wheat' ? 'gehun' : key === 'maize' ? 'makka' : key;
@@ -150,23 +178,20 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const outputWeight = weightNum > 0 ? Math.max(0, parseFloat((weightNum - effectiveKadda).toFixed(2))) : 0;
   const chakkiAmount = Math.round(weightNum * pisaiRate);
 
-  // Spellar Pirai calculation
+  // Spellar Pirai & Khari Amounts
   const spellarPiraiAmount = Math.round(weightNum * piraiRate);
-
-  // Spellar Khari sale calculation
   const khariSaleAmount = Math.round(weightNum * khariRate);
 
-  // Owner stock amount
+  // Owner Stock Amount
   const stockWeightNum = parseFloat(stockWeight) || 0;
   const stockRateNum = parseFloat(stockRate) || 0;
   const stockTotalAmount = Math.round(stockWeightNum * stockRateNum);
 
-  // Auto-estimate Oil & Khali when weight changes in Spellar mode
+  // Auto-estimate Oil & Khali for Spellar Mode
   const handleSpellarWeightChange = (val) => {
     setInputWeight(val);
     const w = parseFloat(val) || 0;
     if (w > 0) {
-      // Typically ~33% oil and ~62% khali from mustard seeds
       setOilOutput((w * 0.33).toFixed(1));
       setKhaliOutput((w * 0.62).toFixed(1));
     } else {
@@ -186,15 +211,122 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
       phone: newCustPhone.trim()
     });
 
-    setSelectedCustomerId(created.id);
-    setCustomerSearch(created.name);
+    if (created) {
+      setSelectedCustomerId(created.id);
+      setCustomerSearch(created.name);
+    }
     setShowAddCustomerModal(false);
     setNewCustName('');
     setNewCustVillage('');
     setNewCustPhone('');
   };
 
-  // Submit Handler
+  // Display Output Label
+  const getDisplayOutputLabel = (type) => {
+    if (type === 'Atta') {
+      return grainType === 'Chana' ? t('outputTypes.besan') : t('outputTypes.atta');
+    }
+    if (type === 'Dana') return t('outputTypes.dana');
+    if (type === 'Mota Dana') return t('outputTypes.motaDana');
+    return type;
+  };
+
+  // Plain-Text WhatsApp Receipt Builder
+  const whatsappReceiptText = useMemo(() => {
+    const custName = selectedCustomerObj ? selectedCustomerObj.name : customerSearch.trim() || 'Cash Customer';
+    const custVillage = selectedCustomerObj?.village || '';
+    const shopName = shop.name || 'Vanshu Atta Chakki & Oil Mill';
+
+    let itemDesc = '';
+    let totalAmt = 0;
+
+    if (operationMode === 'chakki') {
+      const outLabel = getDisplayOutputLabel(outputType);
+      itemDesc = `${grainType} (${outLabel})`;
+      totalAmt = chakkiAmount;
+    } else if (operationMode === 'spellar') {
+      itemDesc = 'Sarson Pirai';
+      totalAmt = spellarPiraiAmount;
+    } else if (operationMode === 'khari_sale') {
+      itemDesc = 'Khali Bikri';
+      totalAmt = khariSaleAmount;
+    } else {
+      itemDesc = `Stock: ${stockType === 'purchase' ? 'Sarson Seeds Purchase' : stockType === 'oil_sale' ? 'Mustard Oil Sale' : 'Khali Sale'}`;
+      totalAmt = stockTotalAmount;
+    }
+
+    let text = `*${shopName}*\n`;
+    text += `Parchi / Order Receipt\n`;
+    text += `------------------------\n`;
+    text += `Grahak: ${custName}${custVillage ? ` (${custVillage})` : ''}\n`;
+    text += `Item: ${itemDesc}\n`;
+    text += `Kacha Vazan: ${operationMode === 'owner_stock' ? stockWeightNum : weightNum} kg\n`;
+
+    if (operationMode === 'chakki') {
+      text += `Kadda Deduction: ${effectiveKadda} kg\n`;
+      text += `Net Nikla: ${outputWeight} kg (${getDisplayOutputLabel(outputType)})\n`;
+      text += `Rate: ₹${pisaiRate} /kg\n`;
+    } else if (operationMode === 'spellar') {
+      if (oilOutput) text += `Tel Nikla: ${oilOutput} Litres | Khali: ${khaliOutput} kg\n`;
+      text += `Rate: ₹${piraiRate} /kg\n`;
+    } else if (operationMode === 'khari_sale') {
+      text += `Rate: ₹${khariRate} /kg\n`;
+    }
+
+    text += `*Kul Rashi: ₹${totalAmt}*\n`;
+    text += `Payment Mode: ${paymentMode.toUpperCase()}\n`;
+    text += `Status: ${status === 'done' ? 'Complete / Ready' : 'Pending Queue (Bori Jama)'}\n`;
+    text += `------------------------\n`;
+    text += `Dhanyawad!`;
+
+    return text;
+  }, [
+    operationMode,
+    selectedCustomerObj,
+    customerSearch,
+    shop.name,
+    grainType,
+    outputType,
+    chakkiAmount,
+    spellarPiraiAmount,
+    khariSaleAmount,
+    stockType,
+    stockTotalAmount,
+    stockWeightNum,
+    weightNum,
+    effectiveKadda,
+    outputWeight,
+    pisaiRate,
+    oilOutput,
+    khaliOutput,
+    piraiRate,
+    khariRate,
+    paymentMode,
+    status
+  ]);
+
+  // Handle WhatsApp Direct Action
+  const handleOpenWhatsApp = () => {
+    const custPhone = selectedCustomerObj?.phone || '';
+    const cleanPhone = custPhone.replace(/\D/g, '');
+    let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappReceiptText)}`;
+    if (cleanPhone.length >= 10) {
+      const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+      url = `https://api.whatsapp.com/send?phone=${phoneWithCountry}&text=${encodeURIComponent(whatsappReceiptText)}`;
+    }
+    window.open(url, '_blank');
+  };
+
+  // Copy Receipt Handler
+  const handleCopyReceipt = () => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(whatsappReceiptText);
+      setCopiedReceipt(true);
+      setTimeout(() => setCopiedReceipt(false), 2000);
+    }
+  };
+
+  // Save Order Submit Handler
   const handleSave = (e) => {
     e.preventDefault();
 
@@ -203,7 +335,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
     let targetCustPhone = selectedCustomerObj ? selectedCustomerObj.phone : '';
 
     // 1. Chakki Mode Entry
-    if (activeMode === 'chakki') {
+    if (operationMode === 'chakki') {
       if (weightNum <= 0) {
         alert('Kripya valid vazan (weight) daalein!');
         return;
@@ -232,109 +364,95 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
 
       addBori(boriData);
     }
-    // 2. Spellar Mode Entry
-    else {
-      if (spellarSubMode === 'pirai') {
-        if (weightNum <= 0) {
-          alert('Kripya valid sarson vazan daalein!');
-          return;
-        }
-
-        const boriData = {
-          mode: 'spellar',
-          type: 'pirai',
-          customerId: targetCustId,
-          customerName: targetCustName,
-          customerPhone: targetCustPhone,
-          grainType: 'Sarson',
-          inputWeight: weightNum,
-          kaddaDeducted: 0,
-          outputWeight: 0,
-          oilOutput: parseFloat(oilOutput) || 0,
-          khaliOutput: parseFloat(khaliOutput) || 0,
-          rate: piraiRate,
-          amount: spellarPiraiAmount,
-          status,
-          paymentMode,
-          notes: notes.trim()
-        };
-
-        addBori(boriData);
-      } else if (spellarSubMode === 'khari_sale') {
-        if (weightNum <= 0) {
-          alert('Kripya valid khari vazan daalein!');
-          return;
-        }
-
-        const boriData = {
-          mode: 'spellar',
-          type: 'khari_sale',
-          customerId: targetCustId,
-          customerName: targetCustName,
-          customerPhone: targetCustPhone,
-          grainType: 'Khali',
-          inputWeight: weightNum,
-          kaddaDeducted: 0,
-          outputWeight: 0,
-          oilOutput: 0,
-          khaliOutput: 0,
-          rate: khariRate,
-          amount: khariSaleAmount,
-          status: 'done', // direct sale is completed
-          paymentMode,
-          notes: notes.trim()
-        };
-
-        addBori(boriData);
-      } else if (spellarSubMode === 'owner_stock') {
-        if (stockWeightNum <= 0) {
-          alert('Kripya valid quantity daalein!');
-          return;
-        }
-
-        const stockData = {
-          type: stockType,
-          item:
-            stockType === 'purchase'
-              ? 'Sarson Seeds'
-              : stockType === 'oil_sale'
-              ? 'Mustard Oil'
-              : 'Khali / Mustard Cake',
-          weight: stockWeightNum,
-          unit: stockType === 'oil_sale' ? 'litre' : 'kg',
-          rate: stockRateNum,
-          amount: stockTotalAmount,
-          notes: stockNotes.trim()
-        };
-
-        addStockEntry(stockData);
+    // 2. Spellar Pressing Mode Entry
+    else if (operationMode === 'spellar') {
+      if (weightNum <= 0) {
+        alert('Kripya valid sarson vazan daalein!');
+        return;
       }
+
+      const boriData = {
+        mode: 'spellar',
+        type: 'pirai',
+        customerId: targetCustId,
+        customerName: targetCustName,
+        customerPhone: targetCustPhone,
+        customerVillage: selectedCustomerObj?.village || '',
+        grainType: 'Sarson',
+        outputType: 'Tel',
+        inputWeight: weightNum,
+        kaddaDeducted: 0,
+        outputWeight: 0,
+        oilOutput: parseFloat(oilOutput) || 0,
+        khaliOutput: parseFloat(khaliOutput) || 0,
+        rate: piraiRate,
+        amount: spellarPiraiAmount,
+        status,
+        paymentMode,
+        notes: notes.trim()
+      };
+
+      addBori(boriData);
+    }
+    // 3. Khari Sale Mode Entry
+    else if (operationMode === 'khari_sale') {
+      if (weightNum <= 0) {
+        alert('Kripya valid khari vazan daalein!');
+        return;
+      }
+
+      const boriData = {
+        mode: 'spellar',
+        type: 'khari_sale',
+        customerId: targetCustId,
+        customerName: targetCustName,
+        customerPhone: targetCustPhone,
+        customerVillage: selectedCustomerObj?.village || '',
+        grainType: 'Khali',
+        outputType: 'Khali',
+        inputWeight: weightNum,
+        kaddaDeducted: 0,
+        outputWeight: 0,
+        oilOutput: 0,
+        khaliOutput: 0,
+        rate: khariRate,
+        amount: khariSaleAmount,
+        status: 'done',
+        paymentMode,
+        notes: notes.trim()
+      };
+
+      addBori(boriData);
+    }
+    // 4. Owner Stock Entry
+    else if (operationMode === 'owner_stock') {
+      if (stockWeightNum <= 0) {
+        alert('Kripya valid quantity daalein!');
+        return;
+      }
+
+      const stockData = {
+        type: stockType,
+        item:
+          stockType === 'purchase'
+            ? 'Sarson Seeds'
+            : stockType === 'oil_sale'
+            ? 'Mustard Oil'
+            : 'Khali / Mustard Cake',
+        weight: stockWeightNum,
+        unit: stockType === 'oil_sale' ? 'litre' : 'kg',
+        rate: stockRateNum,
+        amount: stockTotalAmount,
+        notes: stockNotes.trim()
+      };
+
+      addStockEntry(stockData);
     }
 
-    // Optional WhatsApp receipt share
-    if (activeMode === 'chakki' || (activeMode === 'spellar' && spellarSubMode !== 'owner_stock')) {
-      const finalAmount =
-        activeMode === 'chakki'
-          ? chakkiAmount
-          : spellarSubMode === 'pirai'
-          ? spellarPiraiAmount
-          : khariSaleAmount;
-
-      const shareText =
-        `*${shop.name || 'Chakkibook'}* Slip\n` +
-        `------------------------\n` +
-        `Grahak: ${targetCustName}${selectedCustomerObj?.village ? ` (${selectedCustomerObj.village})` : ''}\n` +
-        `Item: ${activeMode === 'chakki' ? `${grainType} (${outputType})` : spellarSubMode === 'pirai' ? 'Sarson Pirai' : 'Khali Bikri'}\n` +
-        `Vazan: ${weightNum} kg\n` +
-        (activeMode === 'chakki' ? `Kadda: ${effectiveKadda} kg | Net Nikla: ${outputWeight} kg (${outputType})\n` : '') +
-        (spellarSubMode === 'pirai' && oilOutput ? `Tel Nikla: ${oilOutput} L | Khali: ${khaliOutput} kg\n` : '') +
-        `*Kul Rashi: ₹${finalAmount}*\n` +
-        `Payment: ${paymentMode.toUpperCase()}\n` +
-        `Status: ${status === 'done' ? 'Taiyar / Complete' : 'Bori Jama (Queue)'}\n` +
-        `Dhanyawad!`;
-
-      if (window.confirm('Entry Save ho gayi! Kya WhatsApp par slip bhejna chahte hain?')) {
-        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, '_blank');
+    // Direct Prompt for WhatsApp Receipt Sharing
+    if (operationMode !== 'owner_stock') {
+      if (window.confirm('Entry Save ho gayi! Kya WhatsApp par receipt slip bhejna chahte hain?')) {
+        handleOpenWhatsApp();
       }
     }
 
@@ -342,68 +460,78 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   };
 
   return (
-    <div className="app-container">
-      {/* Header Banner */}
-      <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {activeMode === 'chakki' ? (
-            <Scale size={18} style={{ color: 'var(--primary)' }} />
-          ) : (
-            <Droplets size={18} style={{ color: 'var(--primary)' }} />
-          )}
-          <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)' }}>
-            {activeMode === 'chakki' ? t('newEntry.titleChakki') : t('newEntry.titleSpellar')}
-          </span>
+    <div className="app-container" style={{ paddingBottom: '32px' }}>
+      {/* 1. Mode & Operation Segmented Selector Bar */}
+      <div className="card" style={{ padding: '8px', marginBottom: '14px' }}>
+        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          Select Mill Operation
         </div>
-        <span className="section-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          {activeMode === 'chakki' ? <Wheat size={12} /> : <Droplet size={12} />}
-          {activeMode.toUpperCase()}
-        </span>
+        <div
+          role="tablist"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: '6px',
+            backgroundColor: 'var(--bg-main)',
+            padding: '4px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--card-border)'
+          }}
+        >
+          {[
+            { id: 'chakki', label: t('newEntry.modeChakki') || 'Chakki', icon: Wheat },
+            { id: 'spellar', label: t('newEntry.modeSpellar') || 'Spellar', icon: Droplets },
+            { id: 'khari_sale', label: t('newEntry.modeKhari') || 'Khari Sale', icon: Package },
+            { id: 'owner_stock', label: t('newEntry.modeStock') || 'Mill Stock', icon: Warehouse }
+          ].map((op) => {
+            const Icon = op.icon;
+            const isSelected = operationMode === op.id;
+            return (
+              <button
+                key={op.id}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                onClick={() => handleOperationModeChange(op.id)}
+                style={{
+                  minHeight: '46px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px',
+                  padding: '6px 2px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: isSelected ? '1.5px solid var(--primary)' : '1px solid transparent',
+                  backgroundColor: isSelected ? 'var(--primary)' : 'transparent',
+                  color: isSelected ? '#ffffff' : 'var(--text-main)',
+                  fontWeight: isSelected ? 800 : 600,
+                  fontSize: '0.72rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)',
+                  boxShadow: isSelected ? '0 3px 10px rgba(217, 119, 6, 0.3)' : 'none'
+                }}
+              >
+                <Icon size={16} strokeWidth={isSelected ? 2.5 : 2} />
+                <span style={{ textAlign: 'center', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', width: '100%' }}>
+                  {op.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-
-      {/* Spellar Sub-Toggle if Spellar mode is active */}
-      {activeMode === 'spellar' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '4px' }}>
-          <button
-            type="button"
-            className={`pill-btn ${spellarSubMode === 'pirai' ? 'active' : ''}`}
-            onClick={() => setSpellarSubMode('pirai')}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-          >
-            <Droplets size={15} />
-            <span>{t('newEntry.pirai')}</span>
-          </button>
-          <button
-            type="button"
-            className={`pill-btn ${spellarSubMode === 'khari_sale' ? 'active' : ''}`}
-            onClick={() => setSpellarSubMode('khari_sale')}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-          >
-            <Package size={15} />
-            <span>{t('newEntry.khariSale')}</span>
-          </button>
-          <button
-            type="button"
-            className={`pill-btn ${spellarSubMode === 'owner_stock' ? 'active' : ''}`}
-            onClick={() => setSpellarSubMode('owner_stock')}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-          >
-            <Warehouse size={15} />
-            <span>{t('newEntry.ownerStock')}</span>
-          </button>
-        </div>
-      )}
 
       {/* Main Entry Form */}
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
-        {/* Customer Search & Select (Not needed for Owner Stock) */}
-        {!(activeMode === 'spellar' && spellarSubMode === 'owner_stock') && (
+        {/* 2. Customer Search & Selection (Hidden for Owner Stock) */}
+        {operationMode !== 'owner_stock' && (
           <div className="card" style={{ position: 'relative', overflow: 'visible' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <label className="input-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <User size={15} style={{ color: 'var(--primary)' }} />
-                <span>Grahak (Customer)</span>
+                <span>{t('newEntry.customerLabel')}</span>
               </label>
               <button
                 type="button"
@@ -416,12 +544,15 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   display: 'flex', 
                   alignItems: 'center', 
                   gap: '4px',
-                  padding: '4px 10px' 
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-pill)',
+                  fontWeight: 700,
+                  fontSize: '0.78rem'
                 }}
                 onClick={() => setShowAddCustomerModal(true)}
               >
                 <Plus size={13} />
-                <span>Naya Grahak</span>
+                <span>{t('newEntry.newCustomer')}</span>
               </button>
             </div>
 
@@ -435,7 +566,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   setCustomerSearch('');
                 }}
                 badgeType="customers"
-                allLabel="सभी गाँव"
+                allLabel={t('common.allVillages')}
               />
             </div>
 
@@ -446,8 +577,8 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <input
                 type="text"
                 className="form-input"
-                style={{ paddingLeft: '40px', paddingRight: selectedCustomerObj ? '110px' : '14px' }}
-                placeholder="Search grahak naam, phone, ya gaon..."
+                style={{ paddingLeft: '40px', paddingRight: selectedCustomerObj ? '120px' : '14px' }}
+                placeholder={t('newEntry.customerSearchPlaceholder')}
                 value={customerSearch}
                 onChange={(e) => {
                   setCustomerSearch(e.target.value);
@@ -478,19 +609,19 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   {selectedCustomerObj.balance > 0 ? (
                     <>
                       <ArrowUpRight size={13} />
-                      <span>Udhar: ₹{selectedCustomerObj.balance}</span>
+                      <span>{t('newEntry.duesAlert')} ₹{selectedCustomerObj.balance}</span>
                     </>
                   ) : (
                     <>
                       <Check size={13} />
-                      <span>Clear</span>
+                      <span>{t('newEntry.clearAlert')}</span>
                     </>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Autocomplete Dropdown */}
+            {/* Customer Autocomplete Dropdown */}
             {showDropdown && filteredCustomers.length > 0 && (
               <div
                 style={{
@@ -527,7 +658,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   >
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <User size={14} style={{ color: 'var(--text-muted)' }} />
+                        <User size={14} style={{ color: 'var(--primary)' }} />
                         <strong style={{ fontSize: '0.95rem', color: 'var(--text-main)' }}>{cust.name}</strong>
                       </div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
@@ -569,23 +700,23 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         )}
 
         {/* =================================================================
-            CHAKKI MODE FORM
+            CHAKKI GRINDING MODE
             ================================================================= */}
-        {activeMode === 'chakki' && (
+        {operationMode === 'chakki' && (
           <>
-            {/* 1-Tap Primary Grain Selector */}
+            {/* 3. 1-Tap Primary Grain Cards */}
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Wheat size={16} style={{ color: 'var(--primary)' }} />
                 <span>{t('newEntry.selectGrain')}</span>
               </label>
-              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '8px' }}>
+              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))', gap: '8px' }}>
                 {[
-                  { id: 'Gehun', label: t('grainNames.gehun'), sub: 'Wheat', icon: Wheat, rate: shop.chakkiRates?.grainRates?.gehun || 4 },
-                  { id: 'Bajra', label: t('grainNames.bajra'), sub: 'Millet', icon: Scale, rate: shop.chakkiRates?.grainRates?.bajra || 4.5 },
-                  { id: 'Makka', label: t('grainNames.makka'), sub: 'Maize', icon: Scale, rate: shop.chakkiRates?.grainRates?.makka || 4.5 },
-                  { id: 'Chana', label: t('grainNames.chana'), sub: 'Gram/Besan', icon: Package, rate: shop.chakkiRates?.grainRates?.chana || 5.5 },
-                  { id: 'Multigrain', label: t('grainNames.multigrain'), sub: 'Mix', icon: Sparkles, rate: shop.chakkiRates?.grainRates?.multigrain || 5 }
+                  { id: 'Gehun', label: t('grainNames.gehun') || 'Gehun', icon: Wheat, rate: shop.chakkiRates?.grainRates?.gehun || 4, kadda: 1 },
+                  { id: 'Bajra', label: t('grainNames.bajra') || 'Bajra', icon: Scale, rate: shop.chakkiRates?.grainRates?.bajra || 4.5, kadda: 1 },
+                  { id: 'Makka', label: t('grainNames.makka') || 'Makka', icon: Scale, rate: shop.chakkiRates?.grainRates?.makka || 4.5, kadda: 1.25 },
+                  { id: 'Chana', label: t('grainNames.chana') || 'Chana', icon: Package, rate: shop.chakkiRates?.grainRates?.chana || 5.5, kadda: 1.5 },
+                  { id: 'Multigrain', label: t('grainNames.multigrain') || 'Multigrain', icon: Sparkles, rate: shop.chakkiRates?.grainRates?.multigrain || 5, kadda: 1.25 }
                 ].map((g) => {
                   const Icon = g.icon;
                   const isSelected = grainType === g.id;
@@ -600,40 +731,43 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '2px',
-                        minHeight: '54px',
-                        padding: '6px 4px',
+                        gap: '3px',
+                        minHeight: '62px',
+                        padding: '8px 4px',
+                        borderRadius: 'var(--radius-md)',
                         border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--card-border)',
                         backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-elevated)',
                         color: isSelected ? '#ffffff' : 'var(--text-main)',
-                        boxShadow: isSelected ? '0 4px 12px rgba(217,119,6,0.25)' : 'none',
-                        transition: 'all 0.15s ease'
+                        boxShadow: isSelected ? '0 4px 14px rgba(217,119,6,0.3)' : 'none',
+                        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Icon size={15} />
-                        <span style={{ fontSize: '0.84rem', fontWeight: 800 }}>{g.label}</span>
+                        <Icon size={16} strokeWidth={2.5} />
+                        <span style={{ fontSize: '0.86rem', fontWeight: 800 }}>{g.label}</span>
                       </div>
-                      <span style={{ fontSize: '0.68rem', opacity: isSelected ? 0.95 : 0.65, fontWeight: 700 }}>
-                        ₹{g.rate}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', opacity: isSelected ? 0.95 : 0.7, fontWeight: 700 }}>
+                        <span>₹{g.rate}/kg</span>
+                        <span>•</span>
+                        <span>{g.kadda}kg kadda</span>
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 1-Tap Output Type Selector (Milling Consistency) */}
-            <div className="card" style={{ marginTop: '2px' }}>
+            {/* 4. 1-Tap Milling Output Segment */}
+            <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Package size={16} style={{ color: 'var(--primary)' }} />
                 <span>{t('newEntry.selectOutput')}</span>
               </label>
               <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'Atta', label: grainType === 'Chana' ? t('outputTypes.besan') : t('outputTypes.atta'), sub: 'Fine Flour', icon: Wheat },
-                  { id: 'Dana', label: t('outputTypes.dana'), sub: 'Feed / Porridge', icon: Package },
-                  { id: 'Mota Dana', label: t('outputTypes.motaDana'), sub: 'Coarse Daliya', icon: Scale }
+                  { id: 'Atta', label: grainType === 'Chana' ? (t('outputTypes.besan') || 'Besan') : (t('outputTypes.atta') || 'Atta'), sub: grainType === 'Chana' ? 'Gram Flour' : 'Fine Flour', icon: Wheat },
+                  { id: 'Dana', label: t('outputTypes.dana') || 'Dana', sub: 'Animal Feed', icon: Package },
+                  { id: 'Mota Dana', label: t('outputTypes.motaDana') || 'Mota Dana', sub: 'Coarse Daliya', icon: Scale }
                 ].map((o) => {
                   const Icon = o.icon;
                   const isSelected = outputType === o.id;
@@ -649,37 +783,41 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '2px',
-                        minHeight: '52px',
+                        minHeight: '54px',
                         padding: '6px 4px',
+                        borderRadius: 'var(--radius-md)',
                         border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--card-border)',
                         backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-elevated)',
                         color: isSelected ? '#ffffff' : 'var(--text-main)',
-                        boxShadow: isSelected ? '0 3px 8px rgba(0,0,0,0.1)' : 'none',
-                        transition: 'all 0.15s ease'
+                        boxShadow: isSelected ? '0 3px 10px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)'
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Icon size={14} />
-                        <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>{o.label}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Icon size={15} />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>{o.label}</span>
                       </div>
+                      <span style={{ fontSize: '0.68rem', opacity: isSelected ? 0.9 : 0.6, fontWeight: 600 }}>
+                        {o.sub}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Big Vazan (Weight) Input */}
+            {/* 5. Quick Weight Presets & Weight Input */}
             <div className="hero-input-container">
               <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Scale size={16} />
-                <span>Vazan / Weight (Kg)</span>
+                <span>{t('newEntry.weightLabel')}</span>
               </div>
               <input
                 type="number"
                 step="0.1"
                 min="0.1"
                 className="hero-input"
-                placeholder="50"
+                placeholder={t('newEntry.weightPlaceholder')}
                 value={inputWeight}
                 onChange={(e) => {
                   setInputWeight(e.target.value);
@@ -692,8 +830,8 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                 Kilograms (kg)
               </span>
 
-              {/* Quick Preset Weight Pills */}
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '12px', justifyContent: 'center', width: '100%' }}>
+              {/* 1-Tap Quick Weight Chips */}
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '12px', justifyContent: 'center', width: '100%', paddingBottom: '2px' }}>
                 {[
                   { label: '10 kg', val: 10 },
                   { label: '20 kg', val: 20 },
@@ -709,16 +847,17 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                       setIsKaddaOverridden(false);
                     }}
                     style={{
-                      padding: '5px 12px',
+                      padding: '6px 14px',
                       borderRadius: 'var(--radius-pill)',
                       border: Number(inputWeight) === p.val ? '2px solid var(--primary)' : '1px solid var(--card-border)',
                       backgroundColor: Number(inputWeight) === p.val ? 'var(--primary)' : 'var(--bg-elevated)',
                       color: Number(inputWeight) === p.val ? '#ffffff' : 'var(--text-main)',
-                      fontSize: '0.78rem',
+                      fontSize: '0.8rem',
                       fontWeight: '700',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      boxShadow: Number(inputWeight) === p.val ? '0 3px 8px rgba(217,119,6,0.3)' : 'none'
                     }}
                   >
                     {p.label}
@@ -727,12 +866,12 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
             </div>
 
-            {/* Rate & Kadda Config Bar */}
+            {/* Pisai Rate & Kadda Config Bar */}
             <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                   <Coins size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Pisai Rate (₹/kg)</span>
+                  <span>{t('newEntry.rateLabel')}</span>
                 </label>
                 <input
                   type="number"
@@ -763,40 +902,55 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
             </div>
 
-            {/* Auto-Calculation Box */}
-            <div className="calc-summary-box">
-              <div className="calc-row">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Coins size={14} />
-                  <span>Pisai Charge ({weightNum}kg @ ₹{pisaiRate}):</span>
+            {/* 6. Live Bill Breakdown Card */}
+            <div className="card" style={{ background: 'var(--bg-elevated)', border: '2px solid var(--primary-light)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', borderBottom: '1px solid var(--card-border)', paddingBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>
+                  <Calculator size={18} style={{ color: 'var(--primary)' }} />
+                  <span>Live Bill Breakdown</span>
+                </div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--primary-light)', color: 'var(--primary-dark)' }}>
+                  {grainType} • {getDisplayOutputLabel(outputType)}
                 </span>
-                <strong>₹ {chakkiAmount}</strong>
               </div>
-              <div className="calc-row">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Scale size={14} />
-                  <span>Kadda Deducted:</span>
-                </span>
-                <strong>{effectiveKadda} kg</strong>
-              </div>
-              <div className="calc-row highlight">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Package size={16} />
-                  <span>
-                    {outputType === 'Atta' 
-                      ? (grainType === 'Chana' ? 'Besan Niklega (Grahak ko):' : 'Atta Niklega (Grahak ko):') 
-                      : outputType === 'Dana' 
-                      ? 'Dana Niklega (Pashu/Aahar):' 
-                      : 'Mota Daliya Niklega:'}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                  <span>{t('newEntry.grossWeight') || 'Gross Weight'}:</span>
+                  <strong style={{ color: 'var(--text-main)' }}>{weightNum} kg</strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                  <span>{t('newEntry.kaddaDeduction') || 'Kadda Deduction'}:</span>
+                  <strong style={{ color: 'var(--danger)' }}>- {effectiveKadda} kg</strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderTop: '1px dashed var(--card-border)' }}>
+                  <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                    {t('newEntry.netReturned') || 'Net Returned'} ({getDisplayOutputLabel(outputType)}):
                   </span>
-                </span>
-                <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
-                  {outputWeight} kg
-                </span>
+                  <strong style={{ fontSize: '1.1rem', color: 'var(--primary-dark)', fontWeight: 800 }}>
+                    {outputWeight} kg
+                  </strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)' }}>
+                  <span>Pisai Rate:</span>
+                  <span>₹{pisaiRate} / kg</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', background: 'var(--primary-light)', borderRadius: 'var(--radius-sm)', marginTop: '4px' }}>
+                  <span style={{ fontWeight: 800, color: 'var(--primary-dark)', fontSize: '0.95rem' }}>
+                    {t('newEntry.totalBill') || 'Total Bill Amount'}:
+                  </span>
+                  <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary-dark)' }}>
+                    ₹ {chakkiAmount}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Status Selector: Bori Drop-off vs Done Now */}
+            {/* Bori Queue / Order Status Selector */}
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Package size={15} style={{ color: 'var(--primary)' }} />
@@ -809,7 +963,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   onClick={() => setStatus('pending')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <Package size={15} />
+                  <Clock size={15} />
                   <span>{t('newEntry.boriQueue')}</span>
                 </button>
                 <button
@@ -824,7 +978,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
             </div>
 
-            {/* Payment Mode Pills */}
+            {/* Payment Mode Segmented Selector */}
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={15} style={{ color: 'var(--primary)' }} />
@@ -853,11 +1007,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
             </div>
 
-            {/* Notes */}
             <input
               type="text"
               className="form-input"
-              placeholder="Notes / Remark (Optional e.g. Mota Atta, Chokar, Urgent)"
+              placeholder={t('newEntry.notesPlaceholder')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -865,15 +1018,15 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         )}
 
         {/* =================================================================
-            SPELLAR MODE FORMS: PIRAI
+            SPELLAR PRESSING MODE
             ================================================================= */}
-        {activeMode === 'spellar' && spellarSubMode === 'pirai' && (
+        {operationMode === 'spellar' && (
           <>
-            {/* Sarson Vazan */}
+            {/* Sarson Input Weight */}
             <div className="hero-input-container">
               <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Droplets size={16} />
-                <span>Sarson Vazan / Weight (Kg)</span>
+                <span>{t('newEntry.sarsonWeight')}</span>
               </div>
               <input
                 type="number"
@@ -889,13 +1042,43 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Mustard Seeds (kg)
               </span>
+
+              {/* Quick Weight Chips for Spellar */}
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '12px', justifyContent: 'center', width: '100%', paddingBottom: '2px' }}>
+                {[
+                  { label: '20 kg', val: 20 },
+                  { label: '40 kg (1 Mann)', val: 40 },
+                  { label: '80 kg (2 Mann)', val: 80 },
+                  { label: '100 kg', val: 100 },
+                  { label: '200 kg', val: 200 }
+                ].map((p) => (
+                  <button
+                    key={p.val}
+                    type="button"
+                    onClick={() => handleSpellarWeightChange(p.val.toString())}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: Number(inputWeight) === p.val ? '2px solid var(--primary)' : '1.5px solid var(--card-border)',
+                      backgroundColor: Number(inputWeight) === p.val ? 'var(--primary)' : 'var(--bg-elevated)',
+                      color: Number(inputWeight) === p.val ? '#ffffff' : 'var(--text-main)',
+                      fontSize: '0.8rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Pirai Rate */}
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={14} style={{ color: 'var(--primary)' }} />
-                <span>Pirai Rate (₹/kg)</span>
+                <span>{t('newEntry.piraiRate')}</span>
               </label>
               <input
                 type="number"
@@ -907,12 +1090,12 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               />
             </div>
 
-            {/* Oil & Khali Output Manual Inputs */}
+            {/* Oil & Khali Output Estimations */}
             <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Droplet size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Tel Output (Litres)</span>
+                  <span>{t('newEntry.telOutput')}</span>
                 </label>
                 <input
                   type="number"
@@ -927,7 +1110,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Package size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Khali Output (Kg)</span>
+                  <span>{t('newEntry.khaliOutput')}</span>
                 </label>
                 <input
                   type="number"
@@ -940,24 +1123,30 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               </div>
             </div>
 
-            {/* Calculation Box */}
-            <div className="calc-summary-box">
-              <div className="calc-row highlight">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Coins size={16} />
-                  <span>Pirai Charge ({weightNum}kg @ ₹{piraiRate}):</span>
+            {/* Live Bill Card for Spellar Pirai */}
+            <div className="card" style={{ background: 'var(--bg-elevated)', border: '2px solid var(--primary-light)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                  {t('newEntry.piraiCharge')}
                 </span>
-                <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
+                <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary-dark)' }}>
                   ₹ {spellarPiraiAmount}
                 </span>
               </div>
+              {oilOutput && khaliOutput && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', gap: '12px' }}>
+                  <span>Tel Output: <strong>{oilOutput} L</strong></span>
+                  <span>•</span>
+                  <span>Khali: <strong>{khaliOutput} kg</strong></span>
+                </div>
+              )}
             </div>
 
-            {/* Status Selector */}
+            {/* Status & Payment Mode */}
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Package size={15} style={{ color: 'var(--primary)' }} />
-                <span>Status</span>
+                <span>{t('newEntry.boriStatus')}</span>
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button
@@ -966,8 +1155,8 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   onClick={() => setStatus('pending')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
-                  <Package size={15} />
-                  <span>Sarson Drop-off</span>
+                  <Clock size={15} />
+                  <span>{t('newEntry.sarsonDropoff')}</span>
                 </button>
                 <button
                   type="button"
@@ -976,22 +1165,21 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Check size={15} />
-                  <span>Pirai Ho Gayi (Done)</span>
+                  <span>{t('newEntry.piraiDone')}</span>
                 </button>
               </div>
             </div>
 
-            {/* Payment Mode */}
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={15} style={{ color: 'var(--primary)' }} />
-                <span>Payment Mode</span>
+                <span>{t('newEntry.paymentMode')}</span>
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'cash', label: 'Cash (Nokad)', icon: Coins },
-                  { id: 'upi', label: 'UPI Online', icon: Phone },
-                  { id: 'credit', label: 'Udhar (Dues)', icon: ArrowUpRight }
+                  { id: 'cash', label: t('common.cash'), icon: Coins },
+                  { id: 'upi', label: t('common.upi'), icon: Phone },
+                  { id: 'credit', label: t('common.credit'), icon: ArrowUpRight }
                 ].map((m) => {
                   const Icon = m.icon;
                   return (
@@ -1013,7 +1201,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <input
               type="text"
               className="form-input"
-              placeholder="Notes / Remarks"
+              placeholder={t('common.remarks')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -1021,14 +1209,14 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         )}
 
         {/* =================================================================
-            SPELLAR: KHARI SELL SUBMODE
+            KHARI SALE MODE
             ================================================================= */}
-        {activeMode === 'spellar' && spellarSubMode === 'khari_sale' && (
+        {operationMode === 'khari_sale' && (
           <>
             <div className="hero-input-container">
               <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Package size={16} />
-                <span>Khali Vazan / Weight (Kg)</span>
+                <span>{t('newEntry.khaliWeight')}</span>
               </div>
               <input
                 type="number"
@@ -1044,12 +1232,41 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Mustard Cake / Khali (kg)
               </span>
+
+              {/* Quick Weight Chips */}
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '12px', justifyContent: 'center', width: '100%', paddingBottom: '2px' }}>
+                {[
+                  { label: '10 kg', val: 10 },
+                  { label: '20 kg', val: 20 },
+                  { label: '40 kg (1 Mann)', val: 40 },
+                  { label: '50 kg (Bori)', val: 50 }
+                ].map((p) => (
+                  <button
+                    key={p.val}
+                    type="button"
+                    onClick={() => setInputWeight(p.val.toString())}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: Number(inputWeight) === p.val ? '2px solid var(--primary)' : '1.5px solid var(--card-border)',
+                      backgroundColor: Number(inputWeight) === p.val ? 'var(--primary)' : 'var(--bg-elevated)',
+                      color: Number(inputWeight) === p.val ? '#ffffff' : 'var(--text-main)',
+                      fontSize: '0.8rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={14} style={{ color: 'var(--primary)' }} />
-                <span>Khali Rate (₹/kg)</span>
+                <span>{t('newEntry.khaliRate')}</span>
               </label>
               <input
                 type="number"
@@ -1061,13 +1278,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               />
             </div>
 
-            <div className="calc-summary-box">
-              <div className="calc-row highlight">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Coins size={16} />
-                  <span>Kul Rashi (Total Amount):</span>
+            {/* Live Bill Card for Khari Sale */}
+            <div className="card" style={{ background: 'var(--bg-elevated)', border: '2px solid var(--primary-light)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                  {t('newEntry.totalAmount')}
                 </span>
-                <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
+                <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary-dark)' }}>
                   ₹ {khariSaleAmount}
                 </span>
               </div>
@@ -1076,13 +1293,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={15} style={{ color: 'var(--primary)' }} />
-                <span>Payment Mode</span>
+                <span>{t('newEntry.paymentMode')}</span>
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'cash', label: 'Cash (Nokad)', icon: Coins },
-                  { id: 'upi', label: 'UPI Online', icon: Phone },
-                  { id: 'credit', label: 'Udhar (Dues)', icon: ArrowUpRight }
+                  { id: 'cash', label: t('common.cash'), icon: Coins },
+                  { id: 'upi', label: t('common.upi'), icon: Phone },
+                  { id: 'credit', label: t('common.credit'), icon: ArrowUpRight }
                 ].map((m) => {
                   const Icon = m.icon;
                   return (
@@ -1104,7 +1321,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <input
               type="text"
               className="form-input"
-              placeholder="Notes / Remarks"
+              placeholder={t('common.remarks')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
@@ -1112,20 +1329,20 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         )}
 
         {/* =================================================================
-            SPELLAR: OWNER STOCK SUBMODE
+            OWNER STOCK MODE
             ================================================================= */}
-        {activeMode === 'spellar' && spellarSubMode === 'owner_stock' && (
+        {operationMode === 'owner_stock' && (
           <>
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Warehouse size={16} style={{ color: 'var(--primary)' }} />
-                <span>Stock Transaction Type</span>
+                <span>{t('newEntry.stockType')}</span>
               </label>
               <div className="pill-grid">
                 {[
-                  { id: 'purchase', label: 'Buy Sarson Seeds', icon: ShoppingCart },
-                  { id: 'oil_sale', label: 'Sell Mustard Oil', icon: ArrowUpRight },
-                  { id: 'khari_sale', label: 'Sell Khali Cake', icon: Package }
+                  { id: 'purchase', label: t('newEntry.buySarson'), icon: ShoppingCart },
+                  { id: 'oil_sale', label: t('newEntry.sellOil'), icon: ArrowUpRight },
+                  { id: 'khari_sale', label: t('newEntry.sellKhali'), icon: Package }
                 ].map((s) => {
                   const Icon = s.icon;
                   return (
@@ -1152,7 +1369,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="hero-input-container">
               <div className="hero-input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Scale size={16} />
-                <span>{stockType === 'oil_sale' ? 'Tel Quantity (Litres)' : 'Vazan / Weight (Kg)'}</span>
+                <span>{stockType === 'oil_sale' ? 'Tel Quantity (Litres)' : t('newEntry.stockWeight')}</span>
               </div>
               <input
                 type="number"
@@ -1170,7 +1387,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={14} style={{ color: 'var(--primary)' }} />
-                <span>Rate (₹/{stockType === 'oil_sale' ? 'Litre' : 'Kg'})</span>
+                <span>{t('newEntry.stockRate')}</span>
               </label>
               <input
                 type="number"
@@ -1182,13 +1399,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               />
             </div>
 
-            <div className="calc-summary-box">
-              <div className="calc-row highlight">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Coins size={16} />
-                  <span>Total Transaction Amount:</span>
+            {/* Live Bill Card for Owner Stock */}
+            <div className="card" style={{ background: 'var(--bg-elevated)', border: '2px solid var(--primary-light)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>
+                  Total Transaction Amount:
                 </span>
-                <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
+                <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary-dark)' }}>
                   ₹ {stockTotalAmount}
                 </span>
               </div>
@@ -1197,14 +1414,89 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <input
               type="text"
               className="form-input"
-              placeholder="Vendor / Mandi / Notes"
+              placeholder={t('newEntry.vendorNotes')}
               value={stockNotes}
               onChange={(e) => setStockNotes(e.target.value)}
             />
           </>
         )}
 
-        {/* SINGLE BIG SAVE BUTTON AT BOTTOM */}
+        {/* 7. WhatsApp Receipt Generator Preview & Action Bar */}
+        {operationMode !== 'owner_stock' && (
+          <div className="card" style={{ background: 'var(--bg-elevated)', border: '1.5px solid var(--card-border)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-main)' }}>
+                <FileText size={16} style={{ color: '#25D366' }} />
+                <span>{t('newEntry.whatsappReceipt') || 'WhatsApp Receipt Generator'}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyReceipt}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--card-border)',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  color: copiedReceipt ? 'var(--success)' : 'var(--text-main)'
+                }}
+              >
+                {copiedReceipt ? <Check size={13} /> : <Copy size={13} />}
+                <span>{copiedReceipt ? 'Copied!' : 'Copy Text'}</span>
+              </button>
+            </div>
+
+            {/* Formatted Plain Text Receipt Display Box */}
+            <pre
+              style={{
+                fontFamily: 'monospace, monospace',
+                fontSize: '0.78rem',
+                backgroundColor: 'var(--bg-main)',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--card-border)',
+                whiteSpace: 'pre-wrap',
+                margin: 0,
+                color: 'var(--text-main)',
+                lineHeight: '1.45'
+              }}
+            >
+              {whatsappReceiptText}
+            </pre>
+
+            <button
+              type="button"
+              onClick={handleOpenWhatsApp}
+              style={{
+                marginTop: '10px',
+                width: '100%',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                backgroundColor: '#25D366',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 3px 10px rgba(37, 211, 102, 0.3)'
+              }}
+            >
+              <Share2 size={16} />
+              <span>{t('newEntry.shareWhatsapp') || 'Share WhatsApp Receipt'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Single Primary Save Button */}
         <button 
           type="submit" 
           className="big-btn" 
@@ -1213,15 +1505,17 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center', 
-            gap: '10px' 
+            gap: '10px',
+            fontSize: '1.05rem',
+            fontWeight: 800
           }}
         >
-          <Check size={20} />
+          <Check size={22} strokeWidth={3} />
           <span>{t('newEntry.saveEntry')}</span>
         </button>
       </form>
 
-      {/* Inline Modal to Add New Customer */}
+      {/* 8. Customer Quick Add Modal */}
       {showAddCustomerModal && (
         <div
           style={{
@@ -1241,9 +1535,9 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         >
           <div className="card" style={{ width: '100%', maxWidth: '420px', background: 'var(--bg-elevated)', boxShadow: 'var(--shadow-lg)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ fontSize: '1.15rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800 }}>
                 <UserPlus size={18} style={{ color: 'var(--primary)' }} />
-                <span>Naya Grahak Add Karein</span>
+                <span>{t('newEntry.addCustomerTitle')}</span>
               </h3>
               <button
                 type="button"
@@ -1258,7 +1552,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <User size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Grahak ka Naam (Required)</span>
+                  <span>{t('newEntry.custNameLabel')}</span>
                 </label>
                 <input
                   type="text"
@@ -1274,7 +1568,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <MapPin size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Gaon / Village (1-Tap Chunin ya Naya Likhein)</span>
+                  <span>{t('newEntry.custVillageLabel')}</span>
                 </label>
                 {/* 1-Tap Existing Village Chips */}
                 {getVillages && getVillages().length > 0 && (
@@ -1316,7 +1610,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Phone size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Mobile Number (Auto-SMS & WhatsApp)</span>
+                  <span>{t('newEntry.custPhoneLabel')}</span>
                 </label>
                 <input
                   type="tel"
@@ -1334,7 +1628,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   style={{ height: '48px', minHeight: '48px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Check size={16} />
-                  <span>Grahak Jodein</span>
+                  <span>{t('newEntry.saveCustomer')}</span>
                 </button>
                 <button
                   type="button"
@@ -1343,7 +1637,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   onClick={() => setShowAddCustomerModal(false)}
                 >
                   <X size={16} />
-                  <span>Cancel</span>
+                  <span>{t('common.cancel')}</span>
                 </button>
               </div>
             </form>
