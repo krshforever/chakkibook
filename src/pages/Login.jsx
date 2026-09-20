@@ -100,24 +100,22 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true);
     setError('');
 
+    const demoUser = {
+      uid: 'user_9876543210',
+      email: '9876543210@chakkibook.local',
+      isFallback: true
+    };
+
     try {
-      let user;
-      try {
-        user = await loginUser('9876543210', '123456');
-      } catch (loginErr) {
-        // If login failed because user is not created yet, register demo user automatically
-        user = await registerUser('9876543210', '123456');
-      }
-      
-      const demoUser = user || { uid: 'user_9876543210', email: '9876543210@chakkibook.local' };
-      if (onLoginSuccess) onLoginSuccess(demoUser, 'shop_default_1', 'owner');
+      await loginUser('9876543210', '123456');
     } catch (e) {
-      // Fail-safe direct login
-      const fallbackUser = { uid: 'user_9876543210', email: '9876543210@chakkibook.local' };
-      if (onLoginSuccess) onLoginSuccess(fallbackUser, 'shop_default_1', 'owner');
-    } finally {
-      setLoading(false);
+      // Ignore auth provider exceptions for demo mode
     }
+
+    if (onLoginSuccess) {
+      onLoginSuccess(demoUser, 'shop_default_1', 'owner');
+    }
+    setLoading(false);
   };
 
   return (

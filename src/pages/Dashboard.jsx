@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 
 export default function Dashboard({ setActiveTab, onSelectCustomer }) {
-  const activeMode = useStore((state) => state.activeMode);
-  const boris = useStore((state) => state.boris);
-  const customers = useStore((state) => state.customers);
-  const inventory = useStore((state) => state.inventory);
+  const activeMode = useStore((state) => state.activeMode || 'chakki');
+  const boris = useStore((state) => state.boris || []);
+  const customers = useStore((state) => state.customers || []);
+  const inventory = useStore((state) => state.inventory || []);
   const markBoriDone = useStore((state) => state.markBoriDone);
   const hasPermission = useStore((state) => state.hasPermission);
 

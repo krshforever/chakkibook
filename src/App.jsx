@@ -31,7 +31,11 @@ export default function App() {
         }
         await setAuthUser(user, shopId, 'owner');
       } else {
-        useStore.getState().logout();
+        const cur = useStore.getState().currentUser;
+        // Only logout if not using local demo / fallback auth mode
+        if (cur && !cur.isFallback) {
+          useStore.getState().logout();
+        }
       }
       setInitializing(false);
     });

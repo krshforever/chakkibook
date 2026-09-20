@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 
 export default function NewEntry({ setActiveTab, initialCustomerId }) {
-  const activeMode = useStore((state) => state.activeMode);
-  const shop = useStore((state) => state.shop);
-  const customers = useStore((state) => state.customers);
+  const activeMode = useStore((state) => state.activeMode || 'chakki');
+  const shop = useStore((state) => state.shop || {});
+  const customers = useStore((state) => state.customers || []);
   const addCustomer = useStore((state) => state.addCustomer);
   const addBori = useStore((state) => state.addBori);
   const addStockEntry = useStore((state) => state.addStockEntry);
