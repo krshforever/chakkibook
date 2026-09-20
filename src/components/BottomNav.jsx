@@ -1,12 +1,12 @@
 import React from 'react';
-import { Home, PlusCircle, BookOpen, Package, Settings } from 'lucide-react';
+import { Home, BookOpen, Package, Sparkles, Settings } from 'lucide-react';
 
 export default function BottomNav({ activeTab, setActiveTab }) {
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
-    { id: 'entry', label: 'Nayi Entry', icon: PlusCircle },
     { id: 'khata', label: 'Khata', icon: BookOpen },
     { id: 'stock', label: 'Stock', icon: Package },
+    { id: 'ai', label: 'Chakki AI', icon: Sparkles, isHighlighted: true },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -16,9 +16,9 @@ export default function BottomNav({ activeTab, setActiveTab }) {
       bottom: 0,
       left: 0,
       right: 0,
-      height: '56px',
+      height: '58px',
       backgroundColor: '#ffffff',
-      borderTop: '1px solid #e2e8f0',
+      borderTop: '1.5px solid #cbd5e1',
       display: 'grid',
       gridTemplateColumns: `repeat(${navItems.length}, 1fr)`,
       alignItems: 'center',
@@ -43,7 +43,7 @@ export default function BottomNav({ activeTab, setActiveTab }) {
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              color: isActive ? '#d97706' : '#64748b',
+              color: isActive ? (item.isHighlighted ? '#d97706' : '#d97706') : (item.isHighlighted ? '#b45309' : '#475569'),
               position: 'relative',
               padding: '2px 0'
             }}
@@ -53,15 +53,27 @@ export default function BottomNav({ activeTab, setActiveTab }) {
                 position: 'absolute',
                 top: 0,
                 width: '24px',
-                height: '2px',
+                height: '3px',
                 backgroundColor: '#d97706',
-                borderRadius: '0 0 2px 2px'
+                borderRadius: '0 0 3px 3px'
               }} />
             )}
-            <Icon size={18} strokeWidth={isActive ? 2.2 : 1.7} />
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: item.isHighlighted ? '3px 8px' : '0',
+              borderRadius: item.isHighlighted ? '1rem' : '0',
+              backgroundColor: item.isHighlighted ? (isActive ? '#fef3c7' : '#fffbeb') : 'transparent',
+              border: item.isHighlighted ? '1px solid #fde68a' : 'none'
+            }}>
+              <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} color={item.isHighlighted ? '#d97706' : undefined} />
+            </div>
+
             <span style={{
               fontSize: '0.68rem',
-              fontWeight: isActive ? 700 : 500,
+              fontWeight: isActive ? 800 : (item.isHighlighted ? 700 : 500),
               fontFamily: "'Inter', system-ui, sans-serif"
             }}>
               {item.label}

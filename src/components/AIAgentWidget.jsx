@@ -17,11 +17,17 @@ import {
 import { useStore } from '../store/useStore';
 import { processAICommand } from '../services/aiAgent';
 
-export default function AIAgentWidget() {
+export default function AIAgentWidget({ forceOpen, onCloseTab }) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    if (forceOpen) {
+      setIsOpen(true);
+    }
+  }, [forceOpen]);
   
   const store = useStore((state) => state);
 

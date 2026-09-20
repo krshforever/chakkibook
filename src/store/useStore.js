@@ -26,11 +26,23 @@ const initialShopState = {
   phone: '9876543210',
   ownerName: 'Bhaiya',
   chakkiRates: {
-    pisai: 4,          // ₹/kg grinding charge
-    kadda: {           // flour deduction per grain type
-      wheat: 1,        // 1kg kadda per 40kg
-      dana: 1.5,       // 1.5kg kadda per 40kg
-      maize: 1,        // 1kg kadda per 40kg
+    pisai: 4,          // ₹/kg grinding charge fallback
+    grainRates: {      // ₹/kg per primary grain type
+      gehun: 4,
+      bajra: 4.5,
+      makka: 4.5,
+      chana: 5.5,
+      multigrain: 5
+    },
+    kadda: {           // flour deduction per 40kg (1 Mann)
+      gehun: 1,        // 1kg kadda per 40kg
+      bajra: 1,        // 1kg kadda per 40kg
+      makka: 1.25,     // 1.25kg kadda per 40kg
+      chana: 1.5,      // 1.5kg kadda per 40kg
+      wheat: 1,        // legacy alias
+      dana: 1.5,       // legacy alias
+      maize: 1.25,     // legacy alias
+      multigrain: 1.25
     },
     kaddaPer: 40,      // kadda is per X kg (default 40kg = 1 Mann)
   },
@@ -74,13 +86,15 @@ const initialBoris = [
     customerId: 'c1',
     customerName: 'Ramesh Kumar',
     customerPhone: '9812345678',
+    customerVillage: 'Rampur',
     mode: 'chakki',
     type: 'pisai',
     status: 'pending',
     dropOffDate: threeDaysAgoISO,
     doneDate: null,
     pickupDate: null,
-    grainType: 'Wheat',
+    grainType: 'Gehun',
+    outputType: 'Atta',
     inputWeight: 50,
     kaddaDeducted: 1.25,
     outputWeight: 48.75,
@@ -89,7 +103,7 @@ const initialBoris = [
     rate: 4,
     amount: 200,
     paymentMode: 'credit',
-    notes: 'Fine grind',
+    notes: 'Barik atta',
     createdAt: threeDaysAgoISO,
     dayOfWeek: new Date(threeDaysAgoISO).getDay(),
     hourOfDay: 10,
@@ -102,22 +116,24 @@ const initialBoris = [
     customerId: 'c2',
     customerName: 'Sunita Devi',
     customerPhone: '9834567890',
+    customerVillage: 'Rampur',
     mode: 'chakki',
     type: 'pisai',
     status: 'pending',
     dropOffDate: todayISO,
     doneDate: null,
     pickupDate: null,
-    grainType: 'Dana',
+    grainType: 'Bajra',
+    outputType: 'Dana',
     inputWeight: 40,
-    kaddaDeducted: 1.5,
-    outputWeight: 38.5,
+    kaddaDeducted: 1.0,
+    outputWeight: 39.0,
     oilOutput: 0,
     khaliOutput: 0,
-    rate: 4,
-    amount: 160,
+    rate: 4.5,
+    amount: 180,
     paymentMode: 'credit',
-    notes: 'Aaj subah aayi',
+    notes: 'Pashu daliya dana',
     createdAt: todayISO,
     dayOfWeek: now.getDay(),
     hourOfDay: 9,
@@ -130,20 +146,22 @@ const initialBoris = [
     customerId: 'c3',
     customerName: 'Geeta Devi',
     customerPhone: '9856789012',
+    customerVillage: 'Shiv Nagar',
     mode: 'chakki',
     type: 'pisai',
     status: 'pending',
     dropOffDate: yesterdayISO,
     doneDate: null,
     pickupDate: null,
-    grainType: 'Maize',
+    grainType: 'Makka',
+    outputType: 'Mota Dana',
     inputWeight: 35,
-    kaddaDeducted: 0.88,
-    outputWeight: 34.12,
+    kaddaDeducted: 1.09,
+    outputWeight: 33.91,
     oilOutput: 0,
     khaliOutput: 0,
-    rate: 4,
-    amount: 140,
+    rate: 4.5,
+    amount: 157.5,
     paymentMode: 'cash',
     notes: 'Makka mota daliya',
     createdAt: yesterdayISO,
@@ -158,13 +176,15 @@ const initialBoris = [
     customerId: 'c5',
     customerName: 'Suresh Sharma',
     customerPhone: '9823456789',
+    customerVillage: 'Shiv Nagar',
     mode: 'chakki',
     type: 'pisai',
     status: 'done',
     dropOffDate: todayISO,
     doneDate: todayISO,
     pickupDate: null,
-    grainType: 'Wheat',
+    grainType: 'Gehun',
+    outputType: 'Atta',
     inputWeight: 60,
     kaddaDeducted: 1.5,
     outputWeight: 58.5,
@@ -173,7 +193,7 @@ const initialBoris = [
     rate: 4,
     amount: 240,
     paymentMode: 'cash',
-    notes: '',
+    notes: 'Hotel supply atta',
     createdAt: todayISO,
     dayOfWeek: now.getDay(),
     hourOfDay: 8,
@@ -186,6 +206,7 @@ const initialBoris = [
     customerId: 'c4',
     customerName: 'Mohan Lal',
     customerPhone: '9845678901',
+    customerVillage: 'Kisan Basti',
     mode: 'spellar',
     type: 'pirai',
     status: 'done',
@@ -193,6 +214,7 @@ const initialBoris = [
     doneDate: todayISO,
     pickupDate: todayISO,
     grainType: 'Sarson',
+    outputType: 'Tel',
     inputWeight: 80,
     kaddaDeducted: 0,
     outputWeight: 0,
@@ -277,6 +299,93 @@ export const useStore = create((set, get) => ({
   stockEntries: initialStockEntries,
   inventory: initialInventory,
   expenses: initialExpenses,
+
+  // Village State & Filter
+  selectedVillage: 'all', // 'all' | string
+  setSelectedVillage: (village) => set({ selectedVillage: village }),
+
+  // Derived Village Directory with Metrics
+  getVillages: () => {
+    const customers = get().customers || [];
+    const boris = get().boris || [];
+    const villageMap = new Map();
+
+    // Aggregate from customers
+    customers.forEach((c) => {
+      const v = (c.village || '').trim();
+      if (!v) return;
+      if (!villageMap.has(v)) {
+        villageMap.set(v, { name: v, customerCount: 0, pendingCount: 0, totalDues: 0 });
+      }
+      const item = villageMap.get(v);
+      item.customerCount += 1;
+      item.totalDues += (c.balance > 0 ? c.balance : 0);
+    });
+
+    // Aggregate pending boris from current mode
+    boris.forEach((b) => {
+      if (b.status === 'pending' && b.mode === get().activeMode) {
+        let v = (b.customerVillage || '').trim();
+        if (!v && b.customerId) {
+          const cust = customers.find(c => c.id === b.customerId);
+          if (cust && cust.village) v = cust.village.trim();
+        }
+        if (v) {
+          if (!villageMap.has(v)) {
+            villageMap.set(v, { name: v, customerCount: 0, pendingCount: 0, totalDues: 0 });
+          }
+          villageMap.get(v).pendingCount += 1;
+        }
+      }
+    });
+
+    return Array.from(villageMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  },
+
+  // Village Stats Calculator Helper
+  getVillageStats: (villageName) => {
+    const customers = get().customers || [];
+    const boris = get().boris || [];
+    const activeMode = get().activeMode;
+
+    if (!villageName || villageName === 'all') {
+      const totalDues = customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
+      const pendingBoris = boris.filter(b => b.status === 'pending' && b.mode === activeMode).length;
+      return { customerCount: customers.length, totalDues, pendingBoris };
+    }
+
+    const targetV = villageName.trim().toLowerCase();
+    const vCustomers = customers.filter(c => (c.village || '').trim().toLowerCase() === targetV);
+    const totalDues = vCustomers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
+    
+    const pendingBoris = boris.filter(b => {
+      if (b.status !== 'pending' || b.mode !== activeMode) return false;
+      const bV = (b.customerVillage || '').trim().toLowerCase();
+      if (bV) return bV === targetV;
+      const cust = customers.find(c => c.id === b.customerId);
+      return (cust?.village || '').trim().toLowerCase() === targetV;
+    }).length;
+
+    return { customerCount: vCustomers.length, totalDues, pendingBoris };
+  },
+
+  // Grain Setting Lookup Helper
+  getGrainSettings: (grainKey) => {
+    const key = (grainKey || 'gehun').toLowerCase();
+    const chakkiRates = get().shop.chakkiRates || {};
+    
+    // Map aliases
+    const normalizedKey = 
+      key === 'wheat' ? 'gehun' :
+      key === 'maize' ? 'makka' :
+      key;
+
+    const rate = chakkiRates.grainRates?.[normalizedKey] ?? chakkiRates.pisai ?? 4;
+    const kadda = chakkiRates.kadda?.[normalizedKey] ?? chakkiRates.kadda?.[key] ?? 1;
+    const kaddaPer = chakkiRates.kaddaPer ?? 40;
+
+    return { rate, kadda, kaddaPer };
+  },
 
   // Permission Matrix Helper
   hasPermission: (action) => {
@@ -460,6 +569,12 @@ export const useStore = create((set, get) => ({
     const createdDate = new Date().toISOString();
     const curDate = new Date();
 
+    // Resolve customer village snapshot
+    const targetCust = get().customers.find(
+      (c) => c.id === boriData.customerId || c.name === boriData.customerName
+    );
+    const customerVillage = (boriData.customerVillage || targetCust?.village || '').trim();
+
     const newBori = {
       id,
       shopId: get().shopId,
@@ -471,6 +586,9 @@ export const useStore = create((set, get) => ({
       mode: boriData.mode || get().activeMode,
       status: boriData.status || 'pending',
       customerPhone: boriData.customerPhone || '',
+      customerVillage,
+      grainType: boriData.grainType || 'Gehun',
+      outputType: boriData.outputType || 'Atta',
       // Track 8: AI-ready & Analytics Fields
       dayOfWeek: curDate.getDay(),
       hourOfDay: curDate.getHours(),

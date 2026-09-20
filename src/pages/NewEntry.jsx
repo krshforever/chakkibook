@@ -530,12 +530,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                 <Wheat size={16} style={{ color: 'var(--primary)' }} />
                 <span>Anaj (Grain Type)</span>
               </label>
-              <div className="pill-grid">
+              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}>
                 {[
-                  { id: 'Wheat', label: 'Wheat (Gehun)', icon: Wheat },
-                  { id: 'Dana', label: 'Dana', icon: Package },
-                  { id: 'Maize', label: 'Maize (Makka)', icon: Scale },
-                  { id: 'Multi-grain', label: 'Multi-grain', icon: Sparkles }
+                  { id: 'Wheat', label: 'Gehun (Wheat)', icon: Wheat },
+                  { id: 'Bajra', label: 'Bajra', icon: Scale },
+                  { id: 'Maize', label: 'Makka (Maize)', icon: Scale },
+                  { id: 'Dana', label: 'Chana / Dana', icon: Package },
+                  { id: 'Aanya', label: 'Aanya (Other)', icon: Sparkles }
                 ].map((g) => {
                   const Icon = g.icon;
                   return (
@@ -547,10 +548,50 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                         setGrainType(g.id);
                         setIsKaddaOverridden(false);
                       }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '44px' }}
                     >
                       <Icon size={15} />
                       <span>{g.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Output Type Selector Pills (Atta / Dana / Mota Dana) */}
+            <div className="card" style={{ marginTop: '10px' }}>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Package size={16} style={{ color: 'var(--primary)' }} />
+                <span>Kaam Output Type (Pisai Mal)</span>
+              </label>
+              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {[
+                  { id: 'Atta', label: 'Atta (Flour)', icon: Wheat },
+                  { id: 'Dana', label: 'Dana (Cracked)', icon: Package },
+                  { id: 'Mota Dana', label: 'Mota Dana (Coarse)', icon: Scale }
+                ].map((o) => {
+                  const Icon = o.icon;
+                  const isActive = outputType === o.id;
+                  return (
+                    <button
+                      type="button"
+                      key={o.id}
+                      className={`pill-btn ${isActive ? 'active' : ''}`}
+                      onClick={() => setOutputType(o.id)}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        gap: '6px', 
+                        height: '44px',
+                        background: isActive ? '#d97706' : '#ffffff',
+                        color: isActive ? '#ffffff' : '#475569',
+                        border: '1.5px solid #cbd5e1',
+                        fontWeight: isActive ? 800 : 600
+                      }}
+                    >
+                      <Icon size={15} />
+                      <span>{o.label}</span>
                     </button>
                   );
                 })}

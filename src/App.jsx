@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
 import Dashboard from './pages/Dashboard';
@@ -25,7 +26,6 @@ export default function App() {
   useEffect(() => {
     const unsub = onAuthChange(async (user) => {
       if (user) {
-        // Extract phone number from email (synthetic email format)
         const phone = user.email ? user.email.split('@')[0] : '';
         let shopId = await findShopByPhone(phone);
         if (!shopId) {
@@ -34,7 +34,6 @@ export default function App() {
         await setAuthUser(user, shopId, 'owner');
       } else {
         const cur = useStore.getState().currentUser;
-        // Only logout if not using local demo / fallback auth mode
         if (cur && !cur.isFallback) {
           useStore.getState().logout();
         }
@@ -85,7 +84,7 @@ export default function App() {
       {!currentUser ? (
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
-        <div className="app-shell">
+        <div className="app-shell" style={{ position: 'relative', minHeight: '100vh' }}>
           <Header setActiveTab={setActiveTab} onSelectCustomer={handleSelectCustomer} />
           
           <main style={{ paddingBottom: '70px' }}>
@@ -112,11 +111,38 @@ export default function App() {
             {activeTab === 'settings' && <Settings />}
           </main>
 
-          <AIAgentWidget />
+          {/* Big '+' Floating Action Button (FAB) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('entry')}
+            title="Nayi Entry Jama Karein"
+            aria-label="Add New Bori Entry"
+            style={{
+              position: 'fixed',
+              bottom: '72px',
+              right: '18px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '50%',
+              backgroundColor: '#d97706',
+              color: '#ffffff',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 24px rgba(217, 119, 6, 0.45)',
+              cursor: 'pointer',
+              zIndex: 99,
+              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)'
+            }}
+          >
+            <Plus size={28} strokeWidth={2.5} />
+          </button>
+
+          <AIAgentWidget forceOpen={activeTab === 'ai'} onCloseTab={() => setActiveTab('home')} />
           <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
         </div>
       )}
     </ErrorBoundary>
   );
 }
-
