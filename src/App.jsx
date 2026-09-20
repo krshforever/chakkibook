@@ -106,6 +106,7 @@ export default function App() {
         {activeTab === 'settings' && <Settings />}
       </main>
 
+      <AIAgentWidget />
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
