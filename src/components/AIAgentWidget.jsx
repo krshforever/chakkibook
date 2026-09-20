@@ -18,16 +18,33 @@ import { useStore } from '../store/useStore';
 import { processAICommand } from '../services/aiAgent';
 
 export default function AIAgentWidget({ forceOpen, onCloseTab }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(Boolean(forceOpen));
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    if (forceOpen) {
-      setIsOpen(true);
+    if (typeof forceOpen === 'boolean') {
+      setIsOpen(forceOpen);
     }
   }, [forceOpen]);
+
+  const handleClose = () => {
+    setIsOpen(false);
+    if (onCloseTab) {
+      onCloseTab();
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
   
   const store = useStore((state) => state);
 
@@ -145,57 +162,32 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
     { label: 'Pisai Rate ₹5', text: 'Chakki pisai rate 5 rupaye set karo', icon: RefreshCw }
   ];
 
-  return (
-    <>
-      {/* Floating AI Agent Trigger Button */}
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: '76px',
-            right: '16px',
-            zIndex: 999,
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: 'var(--radius-pill)',
-            padding: '10px 18px',
-            fontWeight: 800,
-            fontSize: '0.9rem',
-            boxShadow: '0 8px 24px rgba(99, 102, 241, 0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-          className="ai-float-btn"
-        >
-          <Bot size={18} />
-          <span>Chakki AI</span>
-          <Sparkles size={14} style={{ color: '#fef08a' }} />
-        </button>
-      )}
+  if (!isOpen) {
+    return null;
+  }
 
-      {/* Floating AI Chat Drawer Overlay */}
-      {isOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(10px)',
-            zIndex: 1000,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'flex-end'
-          }}
-        >
+  return (
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleClose();
+        }
+      }}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        zIndex: 1000,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-end'
+      }}
+    >
           <div
             style={{
               width: '100%',
@@ -265,7 +257,7 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
 
               <button
                 type="button"
-                onClick={() => setIsOpen(false)}
+                onClick={handleClose}
                 style={{
                   background: 'rgba(255,255,255,0.1)',
                   border: 'none',
@@ -498,7 +490,5 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
             </div>
           </div>
         </div>
-      )}
-    </>
   );
 }

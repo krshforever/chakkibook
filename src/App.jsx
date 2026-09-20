@@ -48,6 +48,20 @@ export default function App() {
     setAuthUser(user, shopId, role);
   };
 
+  const handleNavChange = (newTab) => {
+    if (newTab === 'ai') {
+      if (activeTab === 'ai') {
+        setActiveTab(previousTab || 'home');
+      } else {
+        setPreviousTab(activeTab);
+        setActiveTab('ai');
+      }
+    } else {
+      setPreviousTab(newTab);
+      setActiveTab(newTab);
+    }
+  };
+
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
   };
@@ -79,68 +93,60 @@ export default function App() {
     );
   }
 
+  // When AI drawer is active, preserve current main view underneath the backdrop blur
+  const currentViewTab = activeTab === 'ai' ? previousTab : activeTab;
+
   return (
     <ErrorBoundary>
       {!currentUser ? (
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
         <div className="app-shell" style={{ position: 'relative', minHeight: '100vh' }}>
-          <Header setActiveTab={setActiveTab} onSelectCustomer={handleSelectCustomer} />
+          <Header setActiveTab={handleNavChange} onSelectCustomer={handleSelectCustomer} />
           
-          <main style={{ paddingBottom: '70px' }}>
-            {activeTab === 'home' && (
+          <main style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
+            {currentViewTab === 'home' && (
               <Dashboard
-                setActiveTab={setActiveTab}
+                setActiveTab={handleNavChange}
                 onSelectCustomer={handleSelectCustomer}
               />
             )}
-            {activeTab === 'entry' && (
+            {currentViewTab === 'entry' && (
               <NewEntry
-                setActiveTab={setActiveTab}
+                setActiveTab={handleNavChange}
                 initialCustomerId={selectedCustomer?.id}
               />
             )}
-            {activeTab === 'khata' && (
+            {currentViewTab === 'khata' && (
               <Khata
                 selectedCustomer={selectedCustomer}
                 onClearSelectedCustomer={handleClearSelectedCustomer}
               />
             )}
-            {activeTab === 'stock' && <Inventory />}
-            {activeTab === 'analytics' && <Analytics />}
-            {activeTab === 'settings' && <Settings />}
+            {currentViewTab === 'stock' && <Inventory />}
+            {currentViewTab === 'analytics' && <Analytics />}
+            {currentViewTab === 'settings' && <Settings />}
           </main>
 
-          {/* Big '+' Floating Action Button (FAB) */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('entry')}
-            title="Nayi Entry Jama Karein"
-            aria-label="Add New Bori Entry"
-            style={{
-              position: 'fixed',
-              bottom: '72px',
-              right: '18px',
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              backgroundColor: '#d97706',
-              color: '#ffffff',
-              border: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 24px rgba(217, 119, 6, 0.45)',
-              cursor: 'pointer',
-              zIndex: 99,
-              transition: 'all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1)'
-            }}
-          >
-            <Plus size={28} strokeWidth={2.5} />
-          </button>
+          {/* Big '+' Floating Action Button (FAB) at Bottom-Right */}
+          <FloatingActionButton
+            activeTab={activeTab}
+            onOpenEntry={() => handleNavChange('entry')}
+          />
 
-          <AIAgentWidget forceOpen={activeTab === 'ai'} onCloseTab={() => setActiveTab('home')} />
-          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+          {/* ChakkiBot AI Drawer Overlay */}
+          <AIAgentWidget
+            forceOpen={activeTab === 'ai'}
+            onCloseTab={() => setActiveTab(previousTab || 'home')}
+          />
+
+          {/* 5-Tab Bottom Navigation with Highlighted ChakkiBot AI Tab */}
+          <BottomNav
+            activeTab={activeTab}
+            setActiveTab={handleNavChange}
+            previousTab={previousTab}
+            onToggleAI={() => setActiveTab(previousTab || 'home')}
+          />
         </div>
       )}
     </ErrorBoundary>

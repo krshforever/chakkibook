@@ -24,11 +24,13 @@ import {
   UserPlus
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import GaonSelector from '../components/GaonSelector';
 
 export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const activeMode = useStore((state) => state.activeMode || 'chakki');
   const shop = useStore((state) => state.shop || {});
   const customers = useStore((state) => state.customers || []);
+  const getVillages = useStore((state) => state.getVillages);
   const addCustomer = useStore((state) => state.addCustomer);
   const addBori = useStore((state) => state.addBori);
   const addStockEntry = useStore((state) => state.addStockEntry);
@@ -39,6 +41,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   // Customer selection / Creation
   const [selectedCustomerId, setSelectedCustomerId] = useState(initialCustomerId || '');
   const [customerSearch, setCustomerSearch] = useState('');
+  const [selectedVillageFilter, setSelectedVillageFilter] = useState('all');
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustName, setNewCustName] = useState('');
@@ -46,9 +49,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
   const [newCustPhone, setNewCustPhone] = useState('');
 
   // Chakki Fields
-  const [grainType, setGrainType] = useState('Wheat');
+  const [grainType, setGrainType] = useState('Gehun');
+  const [outputType, setOutputType] = useState('Atta');
   const [inputWeight, setInputWeight] = useState('');
-  const [pisaiRate, setPisaiRate] = useState(shop.chakkiRates?.pisai || 4);
+  const [pisaiRate, setPisaiRate] = useState(shop.chakkiRates?.grainRates?.gehun || shop.chakkiRates?.pisai || 4);
   const [manualKadda, setManualKadda] = useState('');
   const [isKaddaOverridden, setIsKaddaOverridden] = useState(false);
 
@@ -87,28 +91,55 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
     }
   }, [initialCustomerId, customers]);
 
-  // Filter customers for autocomplete
+  // 1-Tap Grain Change Handler
+  const handleGrainChange = (newGrainId) => {
+    setGrainType(newGrainId);
+    setIsKaddaOverridden(false);
+    setManualKadda('');
+
+    const key = newGrainId.toLowerCase();
+    const grainKey = key === 'wheat' ? 'gehun' : key === 'maize' ? 'makka' : key;
+    const defaultRate = shop.chakkiRates?.grainRates?.[grainKey] ?? shop.chakkiRates?.pisai ?? 4;
+    setPisaiRate(defaultRate);
+  };
+
+  // Filter customers for autocomplete with village filtering
   const filteredCustomers = useMemo(() => {
-    if (!customerSearch.trim()) return customers.slice(0, 5); // show 5 recent
+    let list = customers;
+    if (selectedVillageFilter && selectedVillageFilter !== 'all') {
+      const vTarget = selectedVillageFilter.trim().toLowerCase();
+      list = list.filter((c) => (c.village || '').trim().toLowerCase() === vTarget);
+    }
+    if (!customerSearch.trim()) return list.slice(0, 6);
     const q = customerSearch.toLowerCase();
-    return customers.filter(
+    return list.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         (c.village && c.village.toLowerCase().includes(q)) ||
         (c.phone && c.phone.includes(q))
     );
-  }, [customers, customerSearch]);
+  }, [customers, customerSearch, selectedVillageFilter]);
 
   const selectedCustomerObj = customers.find((c) => c.id === selectedCustomerId);
 
   // Calculate Chakki Kadda & Amounts
   const weightNum = parseFloat(inputWeight) || 0;
 
-  // Kadda Calculation based on grain type
+  // Kadda Calculation based on primary grain type
   const kaddaRatePerMann = useMemo(() => {
-    const grainKey = grainType.toLowerCase();
-    const kaddaMap = shop.chakkiRates?.kadda || { wheat: 1, dana: 1.5, maize: 1 };
-    return kaddaMap[grainKey] !== undefined ? kaddaMap[grainKey] : 1;
+    const key = grainType.toLowerCase();
+    const grainKey = key === 'wheat' ? 'gehun' : key === 'maize' ? 'makka' : key;
+    const kaddaMap = shop.chakkiRates?.kadda || { 
+      gehun: 1, 
+      bajra: 1, 
+      makka: 1.25, 
+      chana: 1.5, 
+      wheat: 1, 
+      dana: 1.5, 
+      maize: 1.25,
+      multigrain: 1.25 
+    };
+    return kaddaMap[grainKey] !== undefined ? kaddaMap[grainKey] : (kaddaMap[key] !== undefined ? kaddaMap[key] : 1);
   }, [grainType, shop.chakkiRates]);
 
   const kaddaPer = shop.chakkiRates?.kaddaPer || 40;
@@ -182,7 +213,9 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
         customerId: targetCustId,
         customerName: targetCustName,
         customerPhone: targetCustPhone,
+        customerVillage: selectedCustomerObj?.village || '',
         grainType,
+        outputType,
         inputWeight: weightNum,
         kaddaDeducted: effectiveKadda,
         outputWeight,
@@ -288,10 +321,10 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
       const shareText =
         `*${shop.name || 'Chakkibook'}* Slip\n` +
         `------------------------\n` +
-        `Grahak: ${targetCustName}\n` +
-        `Item: ${activeMode === 'chakki' ? `${grainType} Pisai` : spellarSubMode === 'pirai' ? 'Sarson Pirai' : 'Khali Bikri'}\n` +
+        `Grahak: ${targetCustName}${selectedCustomerObj?.village ? ` (${selectedCustomerObj.village})` : ''}\n` +
+        `Item: ${activeMode === 'chakki' ? `${grainType} (${outputType})` : spellarSubMode === 'pirai' ? 'Sarson Pirai' : 'Khali Bikri'}\n` +
         `Vazan: ${weightNum} kg\n` +
-        (activeMode === 'chakki' ? `Kadda: ${effectiveKadda} kg | Atta: ${outputWeight} kg\n` : '') +
+        (activeMode === 'chakki' ? `Kadda: ${effectiveKadda} kg | Net Nikla: ${outputWeight} kg (${outputType})\n` : '') +
         (spellarSubMode === 'pirai' && oilOutput ? `Tel Nikla: ${oilOutput} L | Khali: ${khaliOutput} kg\n` : '') +
         `*Kul Rashi: ₹${finalAmount}*\n` +
         `Payment: ${paymentMode.toUpperCase()}\n` +
@@ -388,6 +421,20 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                 <Plus size={13} />
                 <span>Naya Grahak</span>
               </button>
+            </div>
+
+            {/* Gaon Quick Filter Bar */}
+            <div style={{ marginBottom: '10px' }}>
+              <GaonSelector
+                selectedVillage={selectedVillageFilter}
+                onSelectVillage={(v) => {
+                  setSelectedVillageFilter(v);
+                  setSelectedCustomerId('');
+                  setCustomerSearch('');
+                }}
+                badgeType="customers"
+                allLabel="सभी गाँव"
+              />
             </div>
 
             <div style={{ position: 'relative' }}>
@@ -524,74 +571,98 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             ================================================================= */}
         {activeMode === 'chakki' && (
           <>
-            {/* Grain Selector Pills */}
+            {/* 1-Tap Primary Grain Selector */}
             <div className="card">
-              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Wheat size={16} style={{ color: 'var(--primary)' }} />
-                <span>Anaj (Grain Type)</span>
+                <span>अनाज चुनें / Primary Grain (1 Tap)</span>
               </label>
-              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))' }}>
+              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '8px' }}>
                 {[
-                  { id: 'Wheat', label: 'Gehun (Wheat)', icon: Wheat },
-                  { id: 'Bajra', label: 'Bajra', icon: Scale },
-                  { id: 'Maize', label: 'Makka (Maize)', icon: Scale },
-                  { id: 'Dana', label: 'Chana / Dana', icon: Package },
-                  { id: 'Aanya', label: 'Aanya (Other)', icon: Sparkles }
+                  { id: 'Gehun', label: 'गेहूँ (Gehun)', sub: 'Wheat', icon: Wheat, rate: shop.chakkiRates?.grainRates?.gehun || 4 },
+                  { id: 'Bajra', label: 'बाजरा (Bajra)', sub: 'Millet', icon: Scale, rate: shop.chakkiRates?.grainRates?.bajra || 4.5 },
+                  { id: 'Makka', label: 'मक्का (Makka)', sub: 'Maize', icon: Scale, rate: shop.chakkiRates?.grainRates?.makka || 4.5 },
+                  { id: 'Chana', label: 'चना (Chana)', sub: 'Gram/Besan', icon: Package, rate: shop.chakkiRates?.grainRates?.chana || 5.5 },
+                  { id: 'Multigrain', label: 'मल्टीग्रेन', sub: 'Mix', icon: Sparkles, rate: shop.chakkiRates?.grainRates?.multigrain || 5 }
                 ].map((g) => {
                   const Icon = g.icon;
+                  const isSelected = grainType === g.id;
                   return (
                     <button
                       type="button"
                       key={g.id}
-                      className={`pill-btn ${grainType === g.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setGrainType(g.id);
-                        setIsKaddaOverridden(false);
+                      className={`pill-btn ${isSelected ? 'active' : ''}`}
+                      onClick={() => handleGrainChange(g.id)}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '2px',
+                        minHeight: '54px',
+                        padding: '6px 4px',
+                        border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--card-border)',
+                        backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-elevated)',
+                        color: isSelected ? '#ffffff' : 'var(--text-main)',
+                        boxShadow: isSelected ? '0 4px 12px rgba(217,119,6,0.25)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '44px' }}
                     >
-                      <Icon size={15} />
-                      <span>{g.label}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Icon size={15} />
+                        <span style={{ fontSize: '0.84rem', fontWeight: 800 }}>{g.label}</span>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', opacity: isSelected ? 0.95 : 0.65, fontWeight: 700 }}>
+                        {g.sub} • ₹{g.rate}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Output Type Selector Pills (Atta / Dana / Mota Dana) */}
-            <div className="card" style={{ marginTop: '10px' }}>
-              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            {/* 1-Tap Output Type Selector (Milling Consistency) */}
+            <div className="card" style={{ marginTop: '2px' }}>
+              <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Package size={16} style={{ color: 'var(--primary)' }} />
-                <span>Kaam Output Type (Pisai Mal)</span>
+                <span>पिसाई / निकाशी का प्रकार (Milling Output - 1 Tap)</span>
               </label>
-              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+              <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'Atta', label: 'Atta (Flour)', icon: Wheat },
-                  { id: 'Dana', label: 'Dana (Cracked)', icon: Package },
-                  { id: 'Mota Dana', label: 'Mota Dana (Coarse)', icon: Scale }
+                  { id: 'Atta', label: grainType === 'Chana' ? 'बेसन (Besan)' : 'Atta (बारीक आटा)', sub: 'Fine Flour', icon: Wheat },
+                  { id: 'Dana', label: 'Dana (मध्यम)', sub: 'Feed / Porridge', icon: Package },
+                  { id: 'Mota Dana', label: 'Mota Dana (दलिया)', sub: 'Coarse Daliya', icon: Scale }
                 ].map((o) => {
                   const Icon = o.icon;
-                  const isActive = outputType === o.id;
+                  const isSelected = outputType === o.id;
                   return (
                     <button
                       type="button"
                       key={o.id}
-                      className={`pill-btn ${isActive ? 'active' : ''}`}
+                      className={`pill-btn ${isSelected ? 'active' : ''}`}
                       onClick={() => setOutputType(o.id)}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        gap: '6px', 
-                        height: '44px',
-                        background: isActive ? '#d97706' : '#ffffff',
-                        color: isActive ? '#ffffff' : '#475569',
-                        border: '1.5px solid #cbd5e1',
-                        fontWeight: isActive ? 800 : 600
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '2px',
+                        minHeight: '52px',
+                        padding: '6px 4px',
+                        border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--card-border)',
+                        backgroundColor: isSelected ? 'var(--primary)' : 'var(--bg-elevated)',
+                        color: isSelected ? '#ffffff' : 'var(--text-main)',
+                        boxShadow: isSelected ? '0 3px 8px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      <Icon size={15} />
-                      <span>{o.label}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Icon size={14} />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>{o.label}</span>
+                      </div>
+                      <span style={{ fontSize: '0.68rem', opacity: isSelected ? 0.95 : 0.65 }}>
+                        {o.sub}
+                      </span>
                     </button>
                   );
                 })}
@@ -712,7 +783,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div className="calc-row highlight">
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Package size={16} />
-                  <span>Atta Returned (Grahak ko):</span>
+                  <span>
+                    {outputType === 'Atta' 
+                      ? (grainType === 'Chana' ? 'Besan Niklega (Grahak ko):' : 'Atta Niklega (Grahak ko):') 
+                      : outputType === 'Dana' 
+                      ? 'Dana Niklega (Pashu/Aahar):' 
+                      : 'Mota Daliya Niklega:'}
+                  </span>
                 </span>
                 <span className="big-number" style={{ fontSize: '1.4rem', color: 'var(--primary-dark)' }}>
                   {outputWeight} kg
@@ -1198,8 +1275,36 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <div>
                 <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <MapPin size={14} style={{ color: 'var(--primary)' }} />
-                  <span>Gaon / Village (Optional)</span>
+                  <span>Gaon / Village (1-Tap Chunin ya Naya Likhein)</span>
                 </label>
+                {/* 1-Tap Existing Village Chips */}
+                {getVillages && getVillages().length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '8px', paddingBottom: '2px' }}>
+                    {getVillages().map((v) => {
+                      const isSelected = newCustVillage.trim().toLowerCase() === v.name.toLowerCase();
+                      return (
+                        <button
+                          key={v.name}
+                          type="button"
+                          onClick={() => setNewCustVillage(v.name)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)',
+                            border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--card-border)',
+                            backgroundColor: isSelected ? 'var(--primary-light)' : 'var(--bg-elevated)',
+                            color: isSelected ? 'var(--primary-dark)' : 'var(--text-main)',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {v.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <input
                   type="text"
                   className="form-input"

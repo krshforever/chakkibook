@@ -22,7 +22,8 @@ export default function Header() {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      paddingTop: 'env(safe-area-inset-top, 0px)' /* Android Status Bar Safe Area */
     }}>
       <div style={{
         padding: '10px 16px',
