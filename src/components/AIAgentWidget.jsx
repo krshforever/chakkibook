@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { processAICommand } from '../services/aiAgent';
+import { useTranslation } from '../utils/translations';
 
 export default function AIAgentWidget({ forceOpen, onCloseTab }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(Boolean(forceOpen));
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -52,7 +54,7 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
     {
       id: 'm_welcome',
       sender: 'ai',
-      text: 'Namaste! Main ChakkiBot AI Agent hoon. Aap bol kar ya likh kar koi bhi kaam karwa sakte hain (e.g. "Ramesh ki 50kg gehun bori jama karo", "Aaj ki kamai batao").',
+      text: t('aiAgentWidget.welcome'),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       action: null
     }
@@ -155,11 +157,11 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
   };
 
   const quickPrompts = [
-    { label: 'Aaj Ka Summary', text: 'Aaj ka summary aur kamai batao', icon: TrendingUp },
-    { label: '50kg Gehun Pisai', text: 'Ramesh Kumar ki 50kg gehun pisai bori jama karo', icon: Scale },
-    { label: '₹500 Jama Record', text: 'Sunita Devi se 500 rupaye jama payment record karo', icon: Coins },
-    { label: 'Udhar Check', text: 'Kiske paas sabse zyada udhar baki hai', icon: AlertTriangle },
-    { label: 'Pisai Rate ₹5', text: 'Chakki pisai rate 5 rupaye set karo', icon: RefreshCw }
+    { label: t('aiAgentWidget.quickSummary'), text: t('aiAgentWidget.quickSummaryText'), icon: TrendingUp },
+    { label: t('aiAgentWidget.quickGehun'), text: t('aiAgentWidget.quickGehunText'), icon: Scale },
+    { label: t('aiAgentWidget.quickJama'), text: t('aiAgentWidget.quickJamaText'), icon: Coins },
+    { label: t('aiAgentWidget.quickUdhar'), text: t('aiAgentWidget.quickUdharText'), icon: AlertTriangle },
+    { label: t('aiAgentWidget.quickRate'), text: t('aiAgentWidget.quickRateText'), icon: RefreshCw }
   ];
 
   if (!isOpen) {
@@ -246,11 +248,11 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, color: '#ffffff', fontSize: '1.05rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>ChakkiBot AI Agent</span>
+                    <span>{t('aiAgentWidget.title')}</span>
                     <Sparkles size={14} style={{ color: '#fbbf24' }} />
                   </h3>
                   <span style={{ fontSize: '0.72rem', color: '#a5b4fc', fontWeight: 600 }}>
-                    Full App Autonomous Assistant
+                    {t('aiAgentWidget.subtitle')}
                   </span>
                 </div>
               </div>
@@ -403,7 +405,7 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
                   }}
                 >
                   <Bot size={16} />
-                  <span>AI Action Execute Ho Raha Hai...</span>
+                  <span>{t('aiAgentWidget.executing')}</span>
                 </div>
               )}
 
@@ -447,7 +449,7 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
               {/* Text Input */}
               <input
                 type="text"
-                placeholder="Likho ya bolo (e.g. Ramesh 50kg gehun jama)..."
+                placeholder={t('aiAgentWidget.inputPlaceholder')}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
@@ -484,7 +486,7 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
                   transition: 'background-color 0.2s ease'
                 }}
               >
-                <span>Send</span>
+                <span>{t('aiAgentWidget.send')}</span>
                 <Send size={15} />
               </button>
             </div>

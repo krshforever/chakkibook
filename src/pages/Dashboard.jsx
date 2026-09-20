@@ -13,9 +13,11 @@ import {
   Scale
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useTranslation } from '../utils/translations';
 import GaonSelector from '../components/GaonSelector';
 
 export default function Dashboard({ setActiveTab, onSelectCustomer }) {
+  const { t } = useTranslation();
   const activeMode = useStore((state) => state.activeMode || 'chakki');
   const boris = useStore((state) => state.boris || []);
   const customers = useStore((state) => state.customers || []);
@@ -37,9 +39,9 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
 
     if (diffHours < 4) return 'Abhi abhi';
     if (diffHours < 14) return 'Aaj subah';
-    if (diffDays === 1) return 'Kal';
+    if (diffDays === 1) return t('dashboard.yesterday');
     if (diffDays > 1) return `${diffDays}d pehle`;
-    return 'Aaj';
+    return t('dashboard.today');
   };
 
   const now = new Date();
@@ -159,11 +161,11 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {dateFilter === 'aaj' ? 'Aaj Ka Summary' : (dateFilter === 'kal' ? 'Kal Ka Summary' : 'Summary')} • {activeMode.toUpperCase()}{selectedVillage !== 'all' ? ` (${selectedVillage})` : ''}
+            {dateFilter === 'aaj' ? t('dashboard.todaySummary') : (dateFilter === 'kal' ? t('dashboard.yesterdaySummary') : t('dashboard.summary'))} • {activeMode.toUpperCase()}{selectedVillage !== 'all' ? ` (${selectedVillage})` : ''}
           </div>
           <div style={{ fontSize: '0.78rem', fontWeight: 800, color: activeMode === 'chakki' ? '#d97706' : '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
             {activeMode === 'chakki' ? <Wheat size={16} /> : <Droplets size={16} />}
-            <span>{activeMode === 'chakki' ? 'Atta, Bajra & Makka' : 'Sarson Tel'}</span>
+            <span>{activeMode === 'chakki' ? t('dashboard.grainsSubtitleChakki') : t('dashboard.grainsSubtitleSpellar')}</span>
           </div>
         </div>
 
@@ -171,7 +173,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           {/* Income */}
           <div>
             <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700, marginBottom: '2px' }}>
-              Kul Kamai
+              {t('dashboard.totalIncome')}
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#020617', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
               ₹ {totalKamai}
@@ -181,17 +183,17 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           {/* Weight */}
           <div>
             <div style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 700, marginBottom: '2px' }}>
-              {activeMode === 'chakki' ? 'Pisai' : 'Pirai'}
+              {activeMode === 'chakki' ? t('dashboard.grinding') : t('dashboard.pressing')}
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#020617', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
-              {totalKg} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>kg</span>
+              {totalKg} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>{t('common.kg')}</span>
             </div>
           </div>
 
           {/* Udhar */}
           <div>
             <div style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 700, marginBottom: '2px' }}>
-              Baki Udhar
+              {t('dashboard.remainingDues')}
             </div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#dc2626', fontFamily: "'Plus Jakarta Sans', sans-serif", fontVariantNumeric: 'tabular-nums' }}>
               ₹ {totalUdhar}
@@ -223,7 +225,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           }}
         >
           <PlusCircle size={20} />
-          <span>+ Nayi Bori Entry</span>
+          <span>{t('dashboard.newBoriEntry')}</span>
         </button>
 
         <button
@@ -246,7 +248,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           }}
         >
           <BookOpen size={20} color="#475569" />
-          <span>Grahak Khata</span>
+          <span>{t('dashboard.grahakKhata')}</span>
         </button>
       </section>
 
@@ -255,7 +257,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
         selectedVillage={selectedVillage}
         onSelectVillage={(v) => setSelectedVillage(v)}
         badgeType="pending"
-        allLabel="सभी गाँव"
+        allLabel={t('common.allVillages')}
       />
 
       {/* 3. Search & Date Filter Triggers */}
@@ -264,7 +266,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           <Search size={18} color="#475569" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
           <input
             type="text"
-            placeholder="Search grahak name, mobile, grain..."
+            placeholder={t('dashboard.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
@@ -286,10 +288,10 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
         {/* Minimal Filter Tabs - 44px Height */}
         <div style={{ display: 'flex', borderBottom: '1.5px solid #cbd5e1', gap: '16px', paddingBottom: '4px' }}>
           {[
-            { id: 'aaj', label: 'Aaj' },
-            { id: 'kal', label: 'Kal' },
-            { id: 'hafta', label: '7 Din' },
-            { id: 'mahina', label: 'Is Mahine' }
+            { id: 'aaj', label: t('dashboard.today') },
+            { id: 'kal', label: t('dashboard.yesterday') },
+            { id: 'hafta', label: t('dashboard.days7') },
+            { id: 'mahina', label: t('dashboard.thisMonth') }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -318,7 +320,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#020617', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Clock size={18} color="#d97706" />
-            <span>Pending Bori Queue ({pendingBoris.length})</span>
+            <span>{t('dashboard.pendingQueue')} ({pendingBoris.length})</span>
           </h2>
         </div>
 
@@ -333,7 +335,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
             fontSize: '0.88rem',
             fontWeight: 600
           }}>
-            Koi pending bori nahi hai. Sabhi complete hain!
+            {t('dashboard.noPending')}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -419,7 +421,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
                   }}
                 >
                   <CheckCircle2 size={18} />
-                  <span>Done</span>
+                  <span>{t('dashboard.done')}</span>
                 </button>
               </div>
             ))}
@@ -430,12 +432,12 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
       {/* 5. Completed Register */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         <h2 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#020617', margin: 0 }}>
-          Completed Register ({filteredCompletedBoris.length})
+          {t('dashboard.completedRegister')} ({filteredCompletedBoris.length})
         </h2>
 
         {filteredCompletedBoris.length === 0 ? (
           <div style={{ backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '0.85rem', padding: '1.25rem', textAlign: 'center', color: '#475569', fontSize: '0.85rem', fontWeight: 600 }}>
-            Is filter me koi entry nahi hai.
+            {t('dashboard.noCompleted')}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -480,7 +482,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
                     fontWeight: 700,
                     color: b.paymentMode === 'credit' ? '#dc2626' : '#16a34a'
                   }}>
-                    {b.paymentMode === 'credit' ? 'Udhar' : 'Paid'}
+                    {b.paymentMode === 'credit' ? t('common.udhar') : t('common.paid')}
                   </div>
                 </div>
               </div>

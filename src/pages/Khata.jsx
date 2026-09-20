@@ -17,9 +17,11 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useTranslation } from '../utils/translations';
 import GaonSelector from '../components/GaonSelector';
 
 export default function Khata({ selectedCustomer: initialSelectedCustomer, onClearSelectedCustomer }) {
+  const { t } = useTranslation();
   const customers = useStore((state) => state.customers || []);
   const boris = useStore((state) => state.boris || []);
   const addBori = useStore((state) => state.addBori);
@@ -191,8 +193,8 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         <div>
           <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             {selectedVillage === 'all' 
-              ? 'Kul Baki Udhar (All Villages)' 
-              : `${selectedVillage} Ka Kul Baki Udhar (${currentVillageStats.customerCount} Grahak)`}
+              ? t('khata.totalDuesAll') 
+              : `${selectedVillage} ${t('khata.totalDuesVillage')} (${currentVillageStats.customerCount})`}
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', marginTop: '2px', fontFamily: "'Outfit', sans-serif" }}>
             ₹{selectedVillage === 'all' ? totalOutstandingDues : currentVillageStats.totalDues}
@@ -218,7 +220,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
           }}
         >
           <UserPlus size={16} />
-          <span>Naya Grahak</span>
+          <span>{t('khata.newCustomer')}</span>
         </button>
       </section>
 
@@ -227,7 +229,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         selectedVillage={selectedVillage}
         onSelectVillage={(v) => setSelectedVillage(v)}
         badgeType="dues"
-        allLabel="सभी गाँव"
+        allLabel={t('common.allVillages')}
       />
 
       {/* 2. Customer Search Bar */}
@@ -235,7 +237,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
         <input
           type="text"
-          placeholder="Search grahak name, village, mobile..."
+          placeholder={t('khata.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
@@ -287,7 +289,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                     marginBottom: '8px'
                   }}
                 >
-                  ← Wapas Grahak List
+                  ← {t('khata.backToList')}
                 </button>
 
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
@@ -311,7 +313,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
-                  Baki Balance
+                  {t('khata.dueBalance')}
                 </div>
                 <div style={{
                   fontSize: '1.5rem',
@@ -346,7 +348,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                 }}
               >
                 <Download size={15} />
-                <span>PDF Statement</span>
+                <span>{t('khata.pdfStatement')}</span>
               </button>
 
               <button
@@ -369,7 +371,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                 }}
               >
                 <Share2 size={15} />
-                <span>WhatsApp Hisab</span>
+                <span>{t('khata.whatsappHisab')}</span>
               </button>
             </div>
 
@@ -385,13 +387,13 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
             }}>
               <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={16} />
-                <span>Jama Payment Entry (Grahak Rakam Jama Kare)</span>
+                <span>{t('khata.jamaPaymentEntry')}</span>
               </div>
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="number"
-                  placeholder="Rakam (₹)"
+                  placeholder={t('khata.amount')}
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
                   required
@@ -419,7 +421,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                     backgroundColor: '#ffffff'
                   }}
                 >
-                  <option value="cash">Cash</option>
+                  <option value="cash">{t('newEntry.cash')}</option>
                   <option value="upi">UPI / Online</option>
                 </select>
                 <button
@@ -436,7 +438,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                     cursor: 'pointer'
                   }}
                 >
-                  Jama
+                  {t('khata.jamaBtn')}
                 </button>
               </div>
             </form>
@@ -444,12 +446,12 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
             {/* Transaction Timeline */}
             <div>
               <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
-                Transaction History ({activeCustomerBoris.length})
+                {t('khata.txHistory')} ({activeCustomerBoris.length})
               </div>
 
               {activeCustomerBoris.length === 0 ? (
                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                  Is grahak ka abhi tak koi transaction record nahi hai.
+                  {t('khata.noTx')}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -471,7 +473,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                           {b.grainType}{b.outputType ? ` (${b.outputType})` : ''} ({b.inputWeight || 0}kg)
                         </div>
                         <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                          {b.date || (b.createdAt ? b.createdAt.split('T')[0] : '')} • {b.paymentMode === 'credit' ? 'Udhar' : 'Paid'}
+                          {b.date || (b.createdAt ? b.createdAt.split('T')[0] : '')} • {b.paymentMode === 'credit' ? t('newEntry.udhar') : t('dashboard.paid')}
                         </div>
                       </div>
 
@@ -493,7 +495,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {sortedCustomers.length === 0 ? (
               <div style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '1rem', textAlign: 'center', color: '#64748b' }}>
-                Koi grahak nahi mila. Naya grahak add karein!
+                {t('khata.noCustomers')}
               </div>
             ) : (
               sortedCustomers.map((c) => (
@@ -524,7 +526,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>Balance</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>{t('khata.dueBalance')}</div>
                     <div style={{
                       fontSize: '1.1rem',
                       fontWeight: 800,
@@ -563,7 +565,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Naya Grahak Add Karein
+                {t('khata.addCustTitle')}
               </h3>
               <button
                 type="button"
@@ -577,7 +579,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
             <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Grahak Ka Naam
+                  {t('khata.custName')}
                 </label>
                 <input
                   type="text"
@@ -600,7 +602,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Gaon / Address (1-Tap Chunin ya Naya Likhein)
+                  {t('khata.villageAddress')}
                 </label>
                 {/* 1-Tap Existing Village Chips */}
                 {getVillages && getVillages().length > 0 && (
@@ -650,7 +652,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Mobile Number
+                  {t('khata.mobileNumber')}
                 </label>
                 <input
                   type="tel"
@@ -686,7 +688,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                   marginTop: '0.5rem'
                 }}
               >
-                Grahak Save Karein
+                {t('khata.saveCust')}
               </button>
             </form>
           </div>

@@ -19,8 +19,10 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useTranslation } from '../utils/translations';
 
 export default function Inventory() {
+  const { t } = useTranslation();
   const inventory = useStore((state) => state.inventory || []);
   const updateStock = useStore((state) => state.updateStock);
   const addInventoryItem = useStore((state) => state.addInventoryItem);
@@ -117,13 +119,13 @@ export default function Inventory() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
               <Package size={14} style={{ color: '#94a3b8' }} />
               <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: '#94a3b8', letterSpacing: '0.05em', fontWeight: 700 }}>
-                Inventory & Mandi Stock
+                {t('inventory.title')}
               </span>
             </div>
             <h2 style={{ fontSize: '1.6rem', margin: '4px 0 0 0', color: '#fbbf24', fontWeight: 800 }}>
               ₹ {totalValuation.toLocaleString('en-IN')}
             </h2>
-            <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>Kul Stock Market Value</span>
+            <span style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>{t('inventory.marketValuation')}</span>
           </div>
 
           <div style={{ textAlign: 'right' }}>
@@ -144,7 +146,7 @@ export default function Inventory() {
                 }}
               >
                 <AlertTriangle size={13} />
-                <span>{lowStockCount} Low Stock</span>
+                <span>{lowStockCount} {t('inventory.lowStock')}</span>
               </span>
             ) : (
               <span 
@@ -163,7 +165,7 @@ export default function Inventory() {
                 }}
               >
                 <Check size={13} />
-                <span>Stock Health Full</span>
+                <span>{t('inventory.stockHealthFull')}</span>
               </span>
             )}
           </div>
@@ -179,7 +181,7 @@ export default function Inventory() {
           style={{ minHeight: '42px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         >
           <Package size={15} />
-          <span>Stock Overview</span>
+          <span>{t('inventory.stockOverview')}</span>
         </button>
         <button
           type="button"
@@ -188,7 +190,7 @@ export default function Inventory() {
           style={{ minHeight: '42px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         >
           <ShoppingCart size={15} />
-          <span>Mandi Khareedi</span>
+          <span>{t('inventory.mandiPurchase')}</span>
         </button>
         <button
           type="button"
@@ -197,7 +199,7 @@ export default function Inventory() {
           style={{ minHeight: '42px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
         >
           <Plus size={15} />
-          <span>Naya Item</span>
+          <span>{t('inventory.newItem')}</span>
         </button>
       </div>
 
@@ -271,7 +273,7 @@ export default function Inventory() {
                         }}
                       >
                         <RefreshCw size={12} />
-                        <span>Stock Adjust</span>
+                        <span>{t('inventory.adjustStock')}</span>
                       </button>
                     )}
                   </div>
@@ -284,12 +286,12 @@ export default function Inventory() {
                       {isLow ? (
                         <>
                           <AlertTriangle size={12} />
-                          <span>Reorder Warning (Min: {item.lowAlert} {item.unit})</span>
+                          <span>{t('inventory.reorderWarning')} (Min: {item.lowAlert} {item.unit})</span>
                         </>
                       ) : (
                         <>
                           <CheckCircle2 size={12} style={{ color: '#10b981' }} />
-                          <span>Healthy Stock (Min: {item.lowAlert} {item.unit})</span>
+                          <span>{t('inventory.healthyStock')} (Min: {item.lowAlert} {item.unit})</span>
                         </>
                       )}
                     </span>
@@ -399,7 +401,7 @@ export default function Inventory() {
                     style={{ width: 'auto', padding: '0 16px', minHeight: '48px', height: '48px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '5px' }}
                   >
                     <Check size={16} />
-                    <span>Save</span>
+                    <span>{t('inventory.save')}</span>
                   </button>
                   <button 
                     type="button" 
@@ -408,7 +410,7 @@ export default function Inventory() {
                     style={{ width: 'auto', padding: '0 14px', minHeight: '48px', height: '48px', display: 'flex', alignItems: 'center', gap: '4px' }}
                   >
                     <X size={16} />
-                    <span>Cancel</span>
+                    <span>{t('inventory.cancel')}</span>
                   </button>
                 </div>
               </form>
@@ -423,7 +425,7 @@ export default function Inventory() {
           <div className="card" style={{ padding: '16px' }}>
             <h3 style={{ fontSize: '1.1rem', marginTop: 0, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShoppingCart size={18} style={{ color: 'var(--primary)' }} />
-              <span>Mandi Se Raw Material Khareedi Record</span>
+              <span>{t('inventory.mandiTitle')}</span>
             </h3>
 
             <form onSubmit={handleMandiPurchase} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -502,7 +504,7 @@ export default function Inventory() {
                 style={{ minHeight: '48px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
                 <Check size={18} />
-                <span>Mandi Khareedi Save Karo</span>
+                <span>{t('inventory.saveMandi')}</span>
               </button>
             </form>
           </div>
@@ -511,14 +513,14 @@ export default function Inventory() {
           <div>
             <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
               <History size={15} style={{ color: 'var(--primary)' }} />
-              <span>Recent Mandi Purchases ({stockEntries.length})</span>
+              <span>{t('inventory.recentMandi')} ({stockEntries.length})</span>
             </div>
 
             <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
               {stockEntries.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <History size={24} style={{ opacity: 0.5, marginBottom: '6px' }} />
-                  <p style={{ margin: 0, fontSize: '0.88rem' }}>Koi mandi khareedi entry nahi hai.</p>
+                  <p style={{ margin: 0, fontSize: '0.88rem' }}>{t('inventory.noMandi')}</p>
                 </div>
               ) : (
                 stockEntries.map((st) => (
@@ -559,7 +561,7 @@ export default function Inventory() {
         <div className="card" style={{ padding: '16px' }}>
           <h3 style={{ fontSize: '1.1rem', marginTop: 0, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Plus size={18} style={{ color: 'var(--primary)' }} />
-            <span>Naya Stock Item Add Karo</span>
+            <span>{t('inventory.newItem')}</span>
           </h3>
 
           <form onSubmit={handleCreateItem} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -640,7 +642,7 @@ export default function Inventory() {
               style={{ minHeight: '48px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '4px' }}
             >
               <Check size={18} />
-              <span>Save Naya Item</span>
+              <span>{t('inventory.saveNewItem')}</span>
             </button>
           </form>
         </div>

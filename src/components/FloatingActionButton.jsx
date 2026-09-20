@@ -1,5 +1,6 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { useTranslation } from '../utils/translations';
 
 /**
  * Floating Action Button (FAB) for Chakkibook
@@ -7,6 +8,7 @@ import { Plus } from 'lucide-react';
  * Triggers "Nayi Entry" modal/tab from anywhere in the app with high thumb ergonomics.
  */
 export default function FloatingActionButton({ activeTab, onOpenEntry }) {
+  const { t } = useTranslation();
   const isEntryActive = activeTab === 'entry';
 
   const handleClick = (e) => {
@@ -21,8 +23,8 @@ export default function FloatingActionButton({ activeTab, onOpenEntry }) {
       type="button"
       onClick={handleClick}
       className={`fab-btn ${isEntryActive ? 'active' : ''}`}
-      aria-label="Nayi Bori Entry Jama Karein"
-      title="Nayi Entry (Naya Grahak / Bori Pisai)"
+      aria-label={t('fab.newEntryTitle')}
+      title={t('fab.newEntryTitle')}
       style={{
         position: 'fixed',
         bottom: '76px',

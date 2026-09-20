@@ -24,9 +24,11 @@ import {
   UserPlus
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useTranslation } from '../utils/translations';
 import GaonSelector from '../components/GaonSelector';
 
 export default function NewEntry({ setActiveTab, initialCustomerId }) {
+  const { t } = useTranslation();
   const activeMode = useStore((state) => state.activeMode || 'chakki');
   const shop = useStore((state) => state.shop || {});
   const customers = useStore((state) => state.customers || []);
@@ -350,7 +352,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <Droplets size={18} style={{ color: 'var(--primary)' }} />
           )}
           <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-main)' }}>
-            {activeMode === 'chakki' ? 'Nayi Bori Entry (Chakki)' : 'Nayi Entry (Spellar Mill)'}
+            {activeMode === 'chakki' ? t('newEntry.titleChakki') : t('newEntry.titleSpellar')}
           </span>
         </div>
         <span className="section-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -369,7 +371,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
             <Droplets size={15} />
-            <span>Pirai</span>
+            <span>{t('newEntry.pirai')}</span>
           </button>
           <button
             type="button"
@@ -378,7 +380,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
             <Package size={15} />
-            <span>Khari Bikri</span>
+            <span>{t('newEntry.khariSale')}</span>
           </button>
           <button
             type="button"
@@ -387,7 +389,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
             <Warehouse size={15} />
-            <span>Apna Stock</span>
+            <span>{t('newEntry.ownerStock')}</span>
           </button>
         </div>
       )}
@@ -575,15 +577,15 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Wheat size={16} style={{ color: 'var(--primary)' }} />
-                <span>अनाज चुनें / Primary Grain (1 Tap)</span>
+                <span>{t('newEntry.selectGrain')}</span>
               </label>
               <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '8px' }}>
                 {[
-                  { id: 'Gehun', label: 'गेहूँ (Gehun)', sub: 'Wheat', icon: Wheat, rate: shop.chakkiRates?.grainRates?.gehun || 4 },
-                  { id: 'Bajra', label: 'बाजरा (Bajra)', sub: 'Millet', icon: Scale, rate: shop.chakkiRates?.grainRates?.bajra || 4.5 },
-                  { id: 'Makka', label: 'मक्का (Makka)', sub: 'Maize', icon: Scale, rate: shop.chakkiRates?.grainRates?.makka || 4.5 },
-                  { id: 'Chana', label: 'चना (Chana)', sub: 'Gram/Besan', icon: Package, rate: shop.chakkiRates?.grainRates?.chana || 5.5 },
-                  { id: 'Multigrain', label: 'मल्टीग्रेन', sub: 'Mix', icon: Sparkles, rate: shop.chakkiRates?.grainRates?.multigrain || 5 }
+                  { id: 'Gehun', label: t('grainNames.gehun'), sub: 'Wheat', icon: Wheat, rate: shop.chakkiRates?.grainRates?.gehun || 4 },
+                  { id: 'Bajra', label: t('grainNames.bajra'), sub: 'Millet', icon: Scale, rate: shop.chakkiRates?.grainRates?.bajra || 4.5 },
+                  { id: 'Makka', label: t('grainNames.makka'), sub: 'Maize', icon: Scale, rate: shop.chakkiRates?.grainRates?.makka || 4.5 },
+                  { id: 'Chana', label: t('grainNames.chana'), sub: 'Gram/Besan', icon: Package, rate: shop.chakkiRates?.grainRates?.chana || 5.5 },
+                  { id: 'Multigrain', label: t('grainNames.multigrain'), sub: 'Mix', icon: Sparkles, rate: shop.chakkiRates?.grainRates?.multigrain || 5 }
                 ].map((g) => {
                   const Icon = g.icon;
                   const isSelected = grainType === g.id;
@@ -613,7 +615,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                         <span style={{ fontSize: '0.84rem', fontWeight: 800 }}>{g.label}</span>
                       </div>
                       <span style={{ fontSize: '0.68rem', opacity: isSelected ? 0.95 : 0.65, fontWeight: 700 }}>
-                        {g.sub} • ₹{g.rate}
+                        ₹{g.rate}
                       </span>
                     </button>
                   );
@@ -625,13 +627,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="card" style={{ marginTop: '2px' }}>
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
                 <Package size={16} style={{ color: 'var(--primary)' }} />
-                <span>पिसाई / निकाशी का प्रकार (Milling Output - 1 Tap)</span>
+                <span>{t('newEntry.selectOutput')}</span>
               </label>
               <div className="pill-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'Atta', label: grainType === 'Chana' ? 'बेसन (Besan)' : 'Atta (बारीक आटा)', sub: 'Fine Flour', icon: Wheat },
-                  { id: 'Dana', label: 'Dana (मध्यम)', sub: 'Feed / Porridge', icon: Package },
-                  { id: 'Mota Dana', label: 'Mota Dana (दलिया)', sub: 'Coarse Daliya', icon: Scale }
+                  { id: 'Atta', label: grainType === 'Chana' ? t('outputTypes.besan') : t('outputTypes.atta'), sub: 'Fine Flour', icon: Wheat },
+                  { id: 'Dana', label: t('outputTypes.dana'), sub: 'Feed / Porridge', icon: Package },
+                  { id: 'Mota Dana', label: t('outputTypes.motaDana'), sub: 'Coarse Daliya', icon: Scale }
                 ].map((o) => {
                   const Icon = o.icon;
                   const isSelected = outputType === o.id;
@@ -660,9 +662,6 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                         <Icon size={14} />
                         <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>{o.label}</span>
                       </div>
-                      <span style={{ fontSize: '0.68rem', opacity: isSelected ? 0.95 : 0.65 }}>
-                        {o.sub}
-                      </span>
                     </button>
                   );
                 })}
@@ -801,7 +800,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Package size={15} style={{ color: 'var(--primary)' }} />
-                <span>Bori Status</span>
+                <span>{t('newEntry.boriStatus')}</span>
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button
@@ -811,7 +810,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Package size={15} />
-                  <span>Bori Jama (Queue)</span>
+                  <span>{t('newEntry.boriQueue')}</span>
                 </button>
                 <button
                   type="button"
@@ -820,7 +819,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                 >
                   <Check size={15} />
-                  <span>Abhi Pisai (Done)</span>
+                  <span>{t('newEntry.abhiPisai')}</span>
                 </button>
               </div>
             </div>
@@ -829,13 +828,13 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
             <div className="card">
               <label className="input-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Coins size={15} style={{ color: 'var(--primary)' }} />
-                <span>Payment Mode</span>
+                <span>{t('newEntry.paymentMode')}</span>
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
-                  { id: 'cash', label: 'Cash (Nokad)', icon: Coins },
-                  { id: 'upi', label: 'UPI Online', icon: Phone },
-                  { id: 'credit', label: 'Udhar (Dues)', icon: ArrowUpRight }
+                  { id: 'cash', label: t('common.cash'), icon: Coins },
+                  { id: 'upi', label: t('common.upi'), icon: Phone },
+                  { id: 'credit', label: t('common.credit'), icon: ArrowUpRight }
                 ].map((m) => {
                   const Icon = m.icon;
                   return (
@@ -1218,7 +1217,7 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
           }}
         >
           <Check size={20} />
-          <span>SAVE ENTRY</span>
+          <span>{t('newEntry.saveEntry')}</span>
         </button>
       </form>
 

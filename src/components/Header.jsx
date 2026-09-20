@@ -1,8 +1,10 @@
 import React from 'react';
 import { Wheat, Droplets, Sun, Moon } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useTranslation } from '../utils/translations';
 
 export default function Header() {
+  const { t } = useTranslation();
   const activeMode = useStore((state) => state.activeMode || 'chakki');
   const setActiveMode = useStore((state) => state.setActiveMode);
   const theme = useStore((state) => state.theme || 'light');
@@ -54,10 +56,10 @@ export default function Header() {
               letterSpacing: '-0.02em',
               fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif"
             }}>
-              Chakkibook
+              {t('header.title')}
             </h1>
             <p style={{ fontSize: '0.75rem', color: '#475569', margin: 0, fontWeight: 600 }}>
-              {shop.name || 'Atta Chakki & Oil Mill'}
+              {shop.name || t('header.subtitle')}
             </p>
           </div>
         </div>
@@ -95,7 +97,7 @@ export default function Header() {
             }}
           >
             <Wheat size={16} color={activeMode === 'chakki' ? '#d97706' : '#475569'} />
-            <span>Chakki</span>
+            <span>{t('header.chakki')}</span>
           </button>
 
           <button
@@ -122,7 +124,7 @@ export default function Header() {
             }}
           >
             <Droplets size={16} color={activeMode === 'spellar' ? '#059669' : '#475569'} />
-            <span>Spellar</span>
+            <span>{t('header.spellar')}</span>
           </button>
         </div>
 
@@ -130,7 +132,7 @@ export default function Header() {
         <button
           type="button"
           onClick={toggleTheme}
-          title={theme === 'light' ? 'Dark Mode' : 'Light Mode'}
+          title={theme === 'light' ? t('header.darkMode') : t('header.lightMode')}
           aria-label="Toggle Theme"
           style={{
             width: '44px',

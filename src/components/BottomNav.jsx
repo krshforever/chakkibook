@@ -1,5 +1,6 @@
 import React from 'react';
 import { Home, BookOpen, Bot, Sparkles, Package, Settings } from 'lucide-react';
+import { useTranslation } from '../utils/translations';
 
 /**
  * BottomNav Component for Chakkibook
@@ -11,35 +12,37 @@ import { Home, BookOpen, Bot, Sparkles, Package, Settings } from 'lucide-react';
  * 5. Settings (Shop Rates, Info, Operators)
  */
 export default function BottomNav({ activeTab, setActiveTab, onToggleAI, previousTab }) {
+  const { t } = useTranslation();
+
   const navItems = [
     { 
       id: 'home', 
-      label: 'Home', 
+      label: t('bottomNav.home'), 
       icon: Home, 
       ariaLabel: 'Dashboard Home' 
     },
     { 
       id: 'khata', 
-      label: 'Khata', 
+      label: t('bottomNav.khata'), 
       icon: BookOpen, 
       ariaLabel: 'Grahak Khata Ledger' 
     },
     { 
       id: 'ai', 
-      label: 'Chakki AI', 
+      label: t('bottomNav.ai'), 
       icon: Bot, 
       isAI: true,
       ariaLabel: 'ChakkiBot AI Assistant' 
     },
     { 
       id: 'stock', 
-      label: 'Stock', 
+      label: t('bottomNav.stock'), 
       icon: Package, 
       ariaLabel: 'Godam Inventory & Stock' 
     },
     { 
       id: 'settings', 
-      label: 'Settings', 
+      label: t('bottomNav.settings'), 
       icon: Settings, 
       ariaLabel: 'Shop Settings & Rates' 
     }

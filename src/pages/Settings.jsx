@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { logoutUser } from '../firebase/auth';
+import { useTranslation } from '../utils/translations';
 
 export default function Settings() {
+  const { t } = useTranslation();
   const shop = useStore((state) => state.shop);
   const userRole = useStore((state) => state.userRole);
   const currentUser = useStore((state) => state.currentUser);
@@ -16,6 +18,8 @@ export default function Settings() {
   const inventory = useStore((state) => state.inventory);
   const updateStock = useStore((state) => state.updateStock);
   const logout = useStore((state) => state.logout);
+  const language = useStore((state) => state.language || 'hinglish');
+  const setLanguage = useStore((state) => state.setLanguage);
   const fullStore = useStore((state) => state);
 
   // Form State: Rates for Primary Grains
@@ -154,13 +158,13 @@ export default function Settings() {
       }}>
         <div>
           <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
-            Active Shop Account ({userRole || 'owner'})
+            {t('settings.activeAccount')} ({userRole || 'owner'})
           </div>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#020617', margin: '2px 0 0 0' }}>
             {shop.name || 'Atta Chakki Dukan'}
           </h3>
           <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 500, marginTop: '2px' }}>
-            Mobile: {shop.phone || '9876543210'}
+            {t('settings.mobile')} {shop.phone || '9876543210'}
           </div>
         </div>
         <button
@@ -181,12 +185,12 @@ export default function Settings() {
             gap: '6px'
           }}
         >
-          🚪 Logout Karein
+          {t('settings.logoutBtn')}
         </button>
       </div>
 
       <div className="section-header">
-        <span>⚙️ Settings & Team Control</span>
+        <span>⚙️ {t('settings.title')}</span>
         <span className="section-badge">{userRole} mode</span>
       </div>
 
@@ -203,9 +207,63 @@ export default function Settings() {
             border: '1px solid var(--success)'
           }}
         >
-          ✅ Settings Save ho gaye!
+          {t('settings.settingsSaved')}
         </div>
       )}
+
+      {/* 0. 3-Option Radio Card for Language Selection */}
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="section-header" style={{ marginBottom: '2px' }}>
+          <span>🌐 {t('settings.languageSelection')}</span>
+          <span className="section-badge" style={{ background: '#d97706', color: '#fff' }}>
+            {language === 'hinglish' ? 'Hinglish' : language === 'hi' ? 'हिंदी' : 'English'}
+          </span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+          {[
+            { id: 'hinglish', label: '💬 Hinglish', sub: '(Default / भाषा)' },
+            { id: 'hi', label: '🇮🇳 शुद्ध हिंदी', sub: '(Pure Hindi)' },
+            { id: 'en', label: '🇬🇧 English', sub: '(Export / Formal)' }
+          ].map((langOpt) => {
+            const isSelected = language === langOpt.id;
+            return (
+              <label
+                key={langOpt.id}
+                onClick={() => setLanguage(langOpt.id)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '12px 8px',
+                  borderRadius: '0.75rem',
+                  border: isSelected ? '2px solid #d97706' : '1.5px solid #cbd5e1',
+                  backgroundColor: isSelected ? '#fffbeb' : '#ffffff',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  boxShadow: isSelected ? '0 2px 8px rgba(217, 119, 6, 0.15)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <input
+                  type="radio"
+                  name="language"
+                  value={langOpt.id}
+                  checked={isSelected}
+                  onChange={() => setLanguage(langOpt.id)}
+                  style={{ marginBottom: '6px', accentColor: '#d97706', width: '16px', height: '16px' }}
+                />
+                <strong style={{ fontSize: '0.88rem', color: isSelected ? '#92400e' : '#020617', fontWeight: 800 }}>
+                  {langOpt.label}
+                </strong>
+                <span style={{ fontSize: '0.72rem', color: isSelected ? '#b45309' : '#64748b', marginTop: '2px', fontWeight: 600 }}>
+                  {langOpt.sub}
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
 
       {/* 1. SMS Settings */}
       {hasPermission('smsSettings') && (

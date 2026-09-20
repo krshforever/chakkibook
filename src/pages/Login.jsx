@@ -17,8 +17,10 @@ import {
 } from "lucide-react";
 import { loginUser, registerUser } from "../firebase/auth";
 import { createShopDoc, addMemberToFirestore, findShopByPhone } from "../firebase/firestore";
+import { useTranslation } from "../utils/translations";
 
 export default function Login({ onLoginSuccess }) {
+  const { t } = useTranslation();
   const [isRegistering, setIsRegistering] = useState(false);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -256,10 +258,10 @@ export default function Login({ onLoginSuccess }) {
             letterSpacing: "-0.03em",
             fontFamily: "'Outfit', system-ui, sans-serif"
           }}>
-            Chakkibook
+            {t('login.title')}
           </h1>
           <p style={{ fontSize: "0.86rem", color: "#64748b", margin: 0, fontWeight: 500 }}>
-            Atta Chakki & Oil Mill Smart Digital Register
+            {t('login.subtitle')}
           </p>
         </div>
 
@@ -297,7 +299,7 @@ export default function Login({ onLoginSuccess }) {
             }}
           >
             <Key size={16} strokeWidth={2.2} style={{ color: !isRegistering ? "#d97706" : "#94a3b8" }} />
-            <span>Sign In</span>
+            <span>{t('login.signInTab')}</span>
           </button>
           <button
             type="button"
@@ -320,7 +322,7 @@ export default function Login({ onLoginSuccess }) {
             }}
           >
             <UserPlus size={16} strokeWidth={2.2} style={{ color: isRegistering ? "#d97706" : "#94a3b8" }} />
-            <span>Naya Account</span>
+            <span>{t('login.newAccTab')}</span>
           </button>
         </div>
 
@@ -360,7 +362,7 @@ export default function Login({ onLoginSuccess }) {
                   color: "#334155" 
                 }}>
                   <Store size={14} style={{ color: focusedField === "shopName" ? "#d97706" : "#64748b" }} />
-                  <span>Shop / Chakki Ka Naam</span>
+                  <span>{t('login.shopName')}</span>
                 </label>
                 <div style={{
                   display: "flex",
@@ -407,7 +409,7 @@ export default function Login({ onLoginSuccess }) {
                   color: "#334155" 
                 }}>
                   <User size={14} style={{ color: focusedField === "ownerName" ? "#d97706" : "#64748b" }} />
-                  <span>Aapka Naam (Owner Name)</span>
+                  <span>{t('login.ownerName')}</span>
                 </label>
                 <div style={{
                   display: "flex",
@@ -456,7 +458,7 @@ export default function Login({ onLoginSuccess }) {
               color: "#334155" 
             }}>
               <Phone size={14} style={{ color: focusedField === "phone" ? "#d97706" : "#64748b" }} />
-              <span>Mobile Number (10 Digits)</span>
+              <span>{t('login.mobile')}</span>
             </label>
             <div style={{
               display: "flex",
@@ -520,7 +522,7 @@ export default function Login({ onLoginSuccess }) {
               color: "#334155" 
             }}>
               <Lock size={14} style={{ color: focusedField === "password" ? "#d97706" : "#64748b" }} />
-              <span>Secret Password</span>
+              <span>{t('login.password')}</span>
             </label>
             <div style={{
               display: "flex",
@@ -601,18 +603,18 @@ export default function Login({ onLoginSuccess }) {
             {loading ? (
               <>
                 <Loader2 size={18} strokeWidth={2.5} className="cb-spinner" />
-                <span>Kripya rukayein...</span>
+                <span>{t('login.loading')}</span>
               </>
             ) : isRegistering ? (
               <>
                 <UserPlus size={18} strokeWidth={2.2} />
-                <span>Account Banayein</span>
+                <span>{t('login.createAccBtn')}</span>
                 <ArrowRight size={16} strokeWidth={2.2} />
               </>
             ) : (
               <>
                 <Key size={18} strokeWidth={2.2} />
-                <span>SIGN IN</span>
+                <span>{t('login.signInBtn')}</span>
                 <ArrowRight size={16} strokeWidth={2.2} />
               </>
             )}
@@ -665,7 +667,7 @@ export default function Login({ onLoginSuccess }) {
             }}
           >
             <Zap size={16} strokeWidth={2.5} style={{ color: "#d97706", fill: "#d97706" }} />
-            <span>Quick 1-Tap Demo Login (No Setup Needed)</span>
+            <span>{t('login.quickDemo')}</span>
           </button>
         </div>
 

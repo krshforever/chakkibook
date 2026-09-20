@@ -1,14 +1,17 @@
 import React from 'react';
 import { MapPin, Users, Clock, IndianRupee } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useTranslation } from '../utils/translations';
 
 export default function GaonSelector({
   selectedVillage = 'all',
   onSelectVillage,
   badgeType = 'pending', // 'pending' | 'customers' | 'dues' | 'none'
-  allLabel = 'सभी गाँव (All)',
+  allLabel,
   style = {}
 }) {
+  const { t } = useTranslation();
+  const displayAllLabel = allLabel || t('common.allVillages');
   const getVillages = useStore((state) => state.getVillages);
   const villages = getVillages ? getVillages() : [];
 
@@ -76,7 +79,7 @@ export default function GaonSelector({
         }}
       >
         <MapPin size={13} style={{ opacity: selectedVillage === 'all' ? 1 : 0.6 }} />
-        <span>{allLabel}</span>
+        <span>{displayAllLabel}</span>
         {badgeType !== 'none' && totalCount > 0 && (
           <span
             style={{

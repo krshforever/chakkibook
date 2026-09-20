@@ -283,12 +283,22 @@ const setDomTheme = (theme) => {
 setDomMode('chakki');
 setDomTheme('light');
 
+// Language initial state from localStorage
+const initialLanguage = (typeof localStorage !== 'undefined' && localStorage.getItem('chakkibook_language')) || 'hinglish';
+
 // Subscriptions cleanup storage
 let unsubscribers = [];
 
 export const useStore = create((set, get) => ({
   activeMode: 'chakki', // 'chakki' | 'spellar'
   theme: 'light',
+  language: initialLanguage, // 'hinglish' | 'hi' | 'en'
+  setLanguage: (lang) => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('chakkibook_language', lang);
+    }
+    set({ language: lang });
+  },
   currentUser: {
     uid: 'user_9876543210',
     email: '9876543210@chakkibook.local',
