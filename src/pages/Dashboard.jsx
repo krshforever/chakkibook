@@ -7,15 +7,21 @@ import {
   PlusCircle, 
   Search, 
   BookOpen, 
-  ChevronRight
+  ChevronRight,
+  MapPin,
+  Package,
+  Scale
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import GaonSelector from '../components/GaonSelector';
 
 export default function Dashboard({ setActiveTab, onSelectCustomer }) {
   const activeMode = useStore((state) => state.activeMode || 'chakki');
   const boris = useStore((state) => state.boris || []);
   const customers = useStore((state) => state.customers || []);
   const markBoriDone = useStore((state) => state.markBoriDone);
+  const selectedVillage = useStore((state) => state.selectedVillage || 'all');
+  const setSelectedVillage = useStore((state) => state.setSelectedVillage);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('aaj'); // 'aaj' | 'kal' | 'hafta' | 'mahina'
@@ -45,14 +51,24 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
   const modeBoris = boris.filter((b) => b.mode === activeMode);
   const query = searchQuery.trim().toLowerCase();
 
-  // 1. Pending Boris in current mode
+  // 1. Pending Boris in current mode (filtered by selected village & search)
   const pendingBoris = modeBoris
     .filter((b) => b.status === 'pending')
+    .filter((b) => {
+      if (selectedVillage === 'all') return true;
+      const vTarget = selectedVillage.trim().toLowerCase();
+      const bV = (b.customerVillage || '').trim().toLowerCase();
+      if (bV) return bV === vTarget;
+      const cust = customers.find(c => c.id === b.customerId || c.name === b.customerName);
+      return (cust?.village || '').trim().toLowerCase() === vTarget;
+    })
     .filter((b) => {
       if (!query) return true;
       return (
         b.customerName?.toLowerCase().includes(query) ||
         b.grainType?.toLowerCase().includes(query) ||
+        b.outputType?.toLowerCase().includes(query) ||
+        b.customerVillage?.toLowerCase().includes(query) ||
         b.customerPhone?.includes(query) ||
         b.notes?.toLowerCase().includes(query)
       );
@@ -76,15 +92,25 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
     return true;
   };
 
-  // 2. Completed Entries
+  // 2. Completed Entries (filtered by selected village, date, & search)
   const filteredCompletedBoris = modeBoris
     .filter((b) => b.status === 'done' || b.status === 'picked_up')
     .filter((b) => isDateInFilter(b.doneDate || b.createdAt))
+    .filter((b) => {
+      if (selectedVillage === 'all') return true;
+      const vTarget = selectedVillage.trim().toLowerCase();
+      const bV = (b.customerVillage || '').trim().toLowerCase();
+      if (bV) return bV === vTarget;
+      const cust = customers.find(c => c.id === b.customerId || c.name === b.customerName);
+      return (cust?.village || '').trim().toLowerCase() === vTarget;
+    })
     .filter((b) => {
       if (!query) return true;
       return (
         b.customerName?.toLowerCase().includes(query) ||
         b.grainType?.toLowerCase().includes(query) ||
+        b.outputType?.toLowerCase().includes(query) ||
+        b.customerVillage?.toLowerCase().includes(query) ||
         b.customerPhone?.includes(query) ||
         b.notes?.toLowerCase().includes(query)
       );
@@ -93,7 +119,15 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
   // Summary Stats
   const allDateDone = modeBoris
     .filter((b) => b.status === 'done' || b.status === 'picked_up')
-    .filter((b) => isDateInFilter(b.doneDate || b.createdAt));
+    .filter((b) => isDateInFilter(b.doneDate || b.createdAt))
+    .filter((b) => {
+      if (selectedVillage === 'all') return true;
+      const vTarget = selectedVillage.trim().toLowerCase();
+      const bV = (b.customerVillage || '').trim().toLowerCase();
+      if (bV) return bV === vTarget;
+      const cust = customers.find(c => c.id === b.customerId || c.name === b.customerName);
+      return (cust?.village || '').trim().toLowerCase() === vTarget;
+    });
 
   const totalKg = allDateDone.reduce((sum, b) => sum + (Number(b.inputWeight) || 0), 0);
   const totalKamai = allDateDone.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
@@ -125,11 +159,11 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            {dateFilter === 'aaj' ? 'Aaj Ka Summary' : (dateFilter === 'kal' ? 'Kal Ka Summary' : 'Summary')} • {activeMode.toUpperCase()}
+            {dateFilter === 'aaj' ? 'Aaj Ka Summary' : (dateFilter === 'kal' ? 'Kal Ka Summary' : 'Summary')} • {activeMode.toUpperCase()}{selectedVillage !== 'all' ? ` (${selectedVillage})` : ''}
           </div>
           <div style={{ fontSize: '0.78rem', fontWeight: 800, color: activeMode === 'chakki' ? '#d97706' : '#059669', display: 'flex', alignItems: 'center', gap: '4px' }}>
             {activeMode === 'chakki' ? <Wheat size={16} /> : <Droplets size={16} />}
-            <span>{activeMode === 'chakki' ? 'Atta & Dana' : 'Sarson Tel'}</span>
+            <span>{activeMode === 'chakki' ? 'Atta, Bajra & Makka' : 'Sarson Tel'}</span>
           </div>
         </div>
 
@@ -215,6 +249,14 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
           <span>Grahak Khata</span>
         </button>
       </section>
+
+      {/* 2.5. Gaon Selector (1-Tap Multi-Village Filter for Queue & Stats) */}
+      <GaonSelector
+        selectedVillage={selectedVillage}
+        onSelectVillage={(v) => setSelectedVillage(v)}
+        badgeType="pending"
+        allLabel="सभी गाँव"
+      />
 
       {/* 3. Search & Date Filter Triggers */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -313,13 +355,44 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
                 <div>
                   <div
                     onClick={() => handleCustomerClick(b.customerId, b.customerName)}
-                    style={{ fontSize: '1rem', fontWeight: 800, color: '#020617', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ fontSize: '1rem', fontWeight: 800, color: '#020617', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
                     <span>{b.customerName}</span>
+                    {b.customerVillage && (
+                      <span style={{ 
+                        fontSize: '0.72rem', 
+                        backgroundColor: '#f1f5f9', 
+                        color: '#475569', 
+                        padding: '1px 7px', 
+                        borderRadius: 'var(--radius-pill)', 
+                        fontWeight: 700,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        <MapPin size={10} />
+                        {b.customerVillage}
+                      </span>
+                    )}
                     <ChevronRight size={16} color="#475569" />
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: '3px', fontWeight: 600 }}>
-                    <span style={{ fontWeight: 800, color: '#020617' }}>{b.inputWeight} kg</span> {b.grainType} • ₹ {b.amount} ({getRelativeTime(b.createdAt)})
+                  <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: '3px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 800, color: '#020617' }}>{b.inputWeight} kg</span>
+                    <span>{b.grainType}</span>
+                    {b.outputType && (
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: 'var(--radius-pill)',
+                        backgroundColor: '#fef3c7',
+                        color: '#92400e',
+                        border: '1px solid #fde68a'
+                      }}>
+                        {b.outputType}
+                      </span>
+                    )}
+                    <span>• ₹ {b.amount} ({getRelativeTime(b.createdAt)})</span>
                   </div>
                 </div>
 
@@ -382,12 +455,19 @@ export default function Dashboard({ setActiveTab, onSelectCustomer }) {
                 <div>
                   <div
                     onClick={() => handleCustomerClick(b.customerId, b.customerName)}
-                    style={{ fontSize: '0.92rem', fontWeight: 700, color: '#020617', cursor: 'pointer' }}
+                    style={{ fontSize: '0.92rem', fontWeight: 700, color: '#020617', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
-                    {b.customerName}
+                    <span>{b.customerName}</span>
+                    {b.customerVillage && (
+                      <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+                        ({b.customerVillage})
+                      </span>
+                    )}
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 500 }}>
-                    {b.inputWeight} kg {b.grainType} • {b.date || getRelativeTime(b.createdAt)}
+                  <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>{b.inputWeight} kg {b.grainType}</span>
+                    {b.outputType && <span style={{ fontWeight: 700, color: '#d97706' }}>[{b.outputType}]</span>}
+                    <span>• {b.date || getRelativeTime(b.createdAt)}</span>
                   </div>
                 </div>
 

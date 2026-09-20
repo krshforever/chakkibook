@@ -289,7 +289,11 @@ let unsubscribers = [];
 export const useStore = create((set, get) => ({
   activeMode: 'chakki', // 'chakki' | 'spellar'
   theme: 'light',
-  currentUser: null,
+  currentUser: {
+    uid: 'user_9876543210',
+    email: '9876543210@chakkibook.local',
+    isFallback: true
+  },
   userRole: 'owner', // 'owner' | 'operator' | 'viewer'
   shopId: 'shop_default_1',
   shop: initialShopState,

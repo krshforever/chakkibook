@@ -17,6 +17,7 @@ import {
   UserCheck
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import GaonSelector from '../components/GaonSelector';
 
 export default function Khata({ selectedCustomer: initialSelectedCustomer, onClearSelectedCustomer }) {
   const customers = useStore((state) => state.customers || []);
@@ -24,6 +25,10 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
   const addBori = useStore((state) => state.addBori);
   const addCustomer = useStore((state) => state.addCustomer);
   const shop = useStore((state) => state.shop || {});
+  const selectedVillage = useStore((state) => state.selectedVillage || 'all');
+  const setSelectedVillage = useStore((state) => state.setSelectedVillage);
+  const getVillages = useStore((state) => state.getVillages);
+  const getVillageStats = useStore((state) => state.getVillageStats);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCustomerId, setActiveCustomerId] = useState(
@@ -46,10 +51,20 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
     return customers.reduce((sum, c) => sum + (c.balance > 0 ? c.balance : 0), 0);
   }, [customers]);
 
-  // Sort customers: highest dues first, then alphabetically
+  // Current Village Aggregate Stats
+  const currentVillageStats = useMemo(() => {
+    return getVillageStats ? getVillageStats(selectedVillage) : { customerCount: customers.length, totalDues: totalOutstandingDues };
+  }, [getVillageStats, selectedVillage, customers, boris, totalOutstandingDues]);
+
+  // Sort customers: filtered by active village and search, highest dues first
   const sortedCustomers = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    return [...customers]
+    let list = customers;
+    if (selectedVillage && selectedVillage !== 'all') {
+      const vTarget = selectedVillage.trim().toLowerCase();
+      list = list.filter((c) => (c.village || '').trim().toLowerCase() === vTarget);
+    }
+    return list
       .filter((c) => {
         if (!q) return true;
         return (
@@ -59,7 +74,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         );
       })
       .sort((a, b) => (b.balance || 0) - (a.balance || 0));
-  }, [customers, searchQuery]);
+  }, [customers, searchQuery, selectedVillage]);
 
   const activeCustomer = useMemo(() => {
     return customers.find((c) => c.id === activeCustomerId) || null;
@@ -133,8 +148,9 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
     let y = 60;
     activeCustomerBoris.forEach((b) => {
       const dateStr = b.date || (b.createdAt ? b.createdAt.split('T')[0] : '');
+      const itemDesc = `${b.grainType}${b.outputType ? ` (${b.outputType})` : ''} (${b.inputWeight || 0}kg)`;
       doc.text(dateStr, 14, y);
-      doc.text(`${b.grainType} (${b.inputWeight || 0}kg)`, 50, y);
+      doc.text(itemDesc, 50, y);
       doc.text(`Rs ${b.amount || 0}`, 150, y);
       y += 8;
       if (y > 280) {
@@ -161,7 +177,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
   return (
     <div className="app-container" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      {/* 1. Dues Hero Summary */}
+      {/* 1. Dues Hero Summary (Village Aware) */}
       <section style={{
         background: 'linear-gradient(135deg, #7f1d1d, #991b1b)',
         color: '#ffffff',
@@ -174,10 +190,12 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
       }}>
         <div>
           <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Kul Baki Udhar (All Customers)
+            {selectedVillage === 'all' 
+              ? 'Kul Baki Udhar (All Villages)' 
+              : `${selectedVillage} Ka Kul Baki Udhar (${currentVillageStats.customerCount} Grahak)`}
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', marginTop: '2px', fontFamily: "'Outfit', sans-serif" }}>
-            ₹{totalOutstandingDues}
+            ₹{selectedVillage === 'all' ? totalOutstandingDues : currentVillageStats.totalDues}
           </div>
         </div>
 
@@ -203,6 +221,14 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
           <span>Naya Grahak</span>
         </button>
       </section>
+
+      {/* 1.5. Gaon Selector (1-Tap Multi-Village Filter) */}
+      <GaonSelector
+        selectedVillage={selectedVillage}
+        onSelectVillage={(v) => setSelectedVillage(v)}
+        badgeType="dues"
+        allLabel="सभी गाँव"
+      />
 
       {/* 2. Customer Search Bar */}
       <section style={{ position: 'relative', width: '100%' }}>
@@ -442,7 +468,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                     >
                       <div>
                         <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
-                          {b.grainType} ({b.inputWeight || 0}kg)
+                          {b.grainType}{b.outputType ? ` (${b.outputType})` : ''} ({b.inputWeight || 0}kg)
                         </div>
                         <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
                           {b.date || (b.createdAt ? b.createdAt.split('T')[0] : '')} • {b.paymentMode === 'credit' ? 'Udhar' : 'Paid'}
@@ -574,8 +600,36 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Gaon / Address
+                  Gaon / Address (1-Tap Chunin ya Naya Likhein)
                 </label>
+                {/* 1-Tap Existing Village Chips */}
+                {getVillages && getVillages().length > 0 && (
+                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginBottom: '8px', paddingBottom: '2px' }}>
+                    {getVillages().map((v) => {
+                      const isSelected = custVillage.trim().toLowerCase() === v.name.toLowerCase();
+                      return (
+                        <button
+                          key={v.name}
+                          type="button"
+                          onClick={() => setCustVillage(v.name)}
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: 'var(--radius-pill)',
+                            border: isSelected ? '1.5px solid #d97706' : '1px solid #cbd5e1',
+                            backgroundColor: isSelected ? '#fef3c7' : '#f8fafc',
+                            color: isSelected ? '#92400e' : '#334155',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {v.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 <input
                   type="text"
                   placeholder="e.g. Rampur"

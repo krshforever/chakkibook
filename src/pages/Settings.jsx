@@ -18,11 +18,16 @@ export default function Settings() {
   const logout = useStore((state) => state.logout);
   const fullStore = useStore((state) => state);
 
-  // Form State: Rates
-  const [pisaiRate, setPisaiRate] = useState(shop.chakkiRates?.pisai || 4);
-  const [kaddaWheat, setKaddaWheat] = useState(shop.chakkiRates?.kadda?.wheat || 1);
-  const [kaddaDana, setKaddaDana] = useState(shop.chakkiRates?.kadda?.dana || 1.5);
-  const [kaddaMaize, setKaddaMaize] = useState(shop.chakkiRates?.kadda?.maize || 1);
+  // Form State: Rates for Primary Grains
+  const [rateGehun, setRateGehun] = useState(shop.chakkiRates?.grainRates?.gehun ?? shop.chakkiRates?.pisai ?? 4);
+  const [rateBajra, setRateBajra] = useState(shop.chakkiRates?.grainRates?.bajra ?? 4.5);
+  const [rateMakka, setRateMakka] = useState(shop.chakkiRates?.grainRates?.makka ?? 4.5);
+  const [rateChana, setRateChana] = useState(shop.chakkiRates?.grainRates?.chana ?? 5.5);
+
+  const [kaddaGehun, setKaddaGehun] = useState(shop.chakkiRates?.kadda?.gehun ?? shop.chakkiRates?.kadda?.wheat ?? 1);
+  const [kaddaBajra, setKaddaBajra] = useState(shop.chakkiRates?.kadda?.bajra ?? 1);
+  const [kaddaMakka, setKaddaMakka] = useState(shop.chakkiRates?.kadda?.makka ?? shop.chakkiRates?.kadda?.maize ?? 1.25);
+  const [kaddaChana, setKaddaChana] = useState(shop.chakkiRates?.kadda?.chana ?? shop.chakkiRates?.kadda?.dana ?? 1.5);
   const [kaddaPer, setKaddaPer] = useState(shop.chakkiRates?.kaddaPer || 40);
 
   const [piraiRate, setPiraiRate] = useState(shop.spellarRates?.pirai || 12);
@@ -52,11 +57,22 @@ export default function Settings() {
 
     updateShopRates({
       chakkiRates: {
-        pisai: parseFloat(pisaiRate) || 0,
+        pisai: parseFloat(rateGehun) || 4,
+        grainRates: {
+          gehun: parseFloat(rateGehun) || 4,
+          bajra: parseFloat(rateBajra) || 4.5,
+          makka: parseFloat(rateMakka) || 4.5,
+          chana: parseFloat(rateChana) || 5.5,
+          multigrain: 5
+        },
         kadda: {
-          wheat: parseFloat(kaddaWheat) || 0,
-          dana: parseFloat(kaddaDana) || 0,
-          maize: parseFloat(kaddaMaize) || 0,
+          gehun: parseFloat(kaddaGehun) || 1,
+          bajra: parseFloat(kaddaBajra) || 1,
+          makka: parseFloat(kaddaMakka) || 1.25,
+          chana: parseFloat(kaddaChana) || 1.5,
+          wheat: parseFloat(kaddaGehun) || 1,
+          dana: parseFloat(kaddaChana) || 1.5,
+          maize: parseFloat(kaddaMakka) || 1.25
         },
         kaddaPer: parseFloat(kaddaPer) || 40,
       },
@@ -326,25 +342,13 @@ export default function Settings() {
       {hasPermission('changeRates') && (
         <form onSubmit={handleSaveRates} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           {/* Chakki Rates */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div className="section-header" style={{ marginBottom: '2px' }}>
-              <span>🌾 Chakki Rates (Pisai & Kadda)</span>
+              <span>🌾 Chakki Anaj Rates (₹/kg) & Kadda</span>
             </div>
 
             <div>
-              <label className="input-label">Pisai Rate (₹ per Kg)</label>
-              <input
-                type="number"
-                step="0.5"
-                className="form-input"
-                value={pisaiRate}
-                onChange={(e) => setPisaiRate(e.target.value)}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="input-label">Kadda Standard Base (Kg)</label>
+              <label className="input-label" style={{ fontWeight: 700 }}>Kadda Standard Base (Kg)</label>
               <input
                 type="number"
                 step="1"
@@ -354,43 +358,133 @@ export default function Settings() {
                 placeholder="e.g. 40 (1 Mann)"
                 required
               />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                Kadda kitne kilo par kat'ta hai (Default: 40 kg = 1 Mann)
+              </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-              <div>
-                <label className="input-label" style={{ fontSize: '0.75rem' }}>Gehun (Wheat)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="form-input"
-                  value={kaddaWheat}
-                  onChange={(e) => setKaddaWheat(e.target.value)}
-                  required
-                />
-              </div>
+            {/* Primary Grains Rate & Kadda Table / Grid */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                Primary Grains (Pisai Rate & Kadda per {kaddaPer}kg)
+              </span>
 
-              <div>
-                <label className="input-label" style={{ fontSize: '0.75rem' }}>Dana (Chana)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="form-input"
-                  value={kaddaDana}
-                  onChange={(e) => setKaddaDana(e.target.value)}
-                  required
-                />
-              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                {/* Gehun */}
+                <div style={{ background: 'var(--bg-elevated)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--card-border)' }}>
+                  <strong style={{ fontSize: '0.88rem', color: '#d97706' }}>🌾 Gehun (गेहूँ)</strong>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '6px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rate (₹/kg)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        className="form-input"
+                        value={rateGehun}
+                        onChange={(e) => setRateGehun(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Kadda (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        value={kaddaGehun}
+                        onChange={(e) => setKaddaGehun(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
 
-              <div>
-                <label className="input-label" style={{ fontSize: '0.75rem' }}>Makka (Maize)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="form-input"
-                  value={kaddaMaize}
-                  onChange={(e) => setKaddaMaize(e.target.value)}
-                  required
-                />
+                {/* Bajra */}
+                <div style={{ background: 'var(--bg-elevated)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--card-border)' }}>
+                  <strong style={{ fontSize: '0.88rem', color: '#d97706' }}>🌾 Bajra (बाजरा)</strong>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '6px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rate (₹/kg)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        className="form-input"
+                        value={rateBajra}
+                        onChange={(e) => setRateBajra(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Kadda (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        value={kaddaBajra}
+                        onChange={(e) => setKaddaBajra(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Makka */}
+                <div style={{ background: 'var(--bg-elevated)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--card-border)' }}>
+                  <strong style={{ fontSize: '0.88rem', color: '#d97706' }}>🌽 Makka (मक्का)</strong>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '6px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rate (₹/kg)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        className="form-input"
+                        value={rateMakka}
+                        onChange={(e) => setRateMakka(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Kadda (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        value={kaddaMakka}
+                        onChange={(e) => setKaddaMakka(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chana */}
+                <div style={{ background: 'var(--bg-elevated)', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--card-border)' }}>
+                  <strong style={{ fontSize: '0.88rem', color: '#d97706' }}>🧆 Chana / Besan (चना)</strong>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginTop: '6px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Rate (₹/kg)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        className="form-input"
+                        value={rateChana}
+                        onChange={(e) => setRateChana(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Kadda (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="form-input"
+                        value={kaddaChana}
+                        onChange={(e) => setKaddaChana(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

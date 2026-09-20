@@ -19,30 +19,49 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [previousTab, setPreviousTab] = useState('home');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [initializing, setInitializing] = useState(true);
+  const [initializing, setInitializing] = useState(false);
 
   const currentUser = useStore((state) => state.currentUser);
   const setAuthUser = useStore((state) => state.setAuthUser);
 
   useEffect(() => {
+    let isMounted = true;
+    
+    // Safety timer: Never allow auth initialization to block UI for more than 400ms
+    const timer = setTimeout(() => {
+      if (isMounted) setInitializing(false);
+    }, 400);
+
     const unsub = onAuthChange(async (user) => {
-      if (user) {
-        const phone = user.email ? user.email.split('@')[0] : '';
-        let shopId = await findShopByPhone(phone);
-        if (!shopId) {
-          shopId = `shop_${phone || 'default'}`;
+      try {
+        if (user) {
+          const phone = user.email ? user.email.split('@')[0] : '';
+          let shopId = null;
+          try {
+            shopId = await findShopByPhone(phone);
+          } catch (e) {
+            console.warn('Firestore findShopByPhone notice:', e);
+          }
+          if (!shopId) {
+            shopId = `shop_${phone || 'default'}`;
+          }
+          await setAuthUser(user, shopId, 'owner');
         }
-        await setAuthUser(user, shopId, 'owner');
-      } else {
-        const cur = useStore.getState().currentUser;
-        if (cur && !cur.isFallback) {
-          useStore.getState().logout();
+      } catch (err) {
+        console.warn('onAuthChange notice:', err);
+      } finally {
+        if (isMounted) {
+          setInitializing(false);
+          clearTimeout(timer);
         }
       }
-      setInitializing(false);
     });
 
-    return () => unsub();
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+      unsub();
+    };
   }, [setAuthUser]);
 
   const handleLoginSuccess = (user, shopId, role) => {
