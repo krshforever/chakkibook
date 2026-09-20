@@ -3,11 +3,11 @@ import jsPDF from 'jspdf';
 import { useStore } from '../store/useStore';
 
 export default function Khata({ selectedCustomer: initialSelectedCustomer, onClearSelectedCustomer }) {
-  const customers = useStore((state) => state.customers);
-  const boris = useStore((state) => state.boris);
+  const customers = useStore((state) => state.customers || []);
+  const boris = useStore((state) => state.boris || []);
   const addBori = useStore((state) => state.addBori);
   const addCustomer = useStore((state) => state.addCustomer);
-  const shop = useStore((state) => state.shop);
+  const shop = useStore((state) => state.shop || {});
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCustomerId, setActiveCustomerId] = useState(
