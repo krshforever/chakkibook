@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "esbuild src/main.jsx --bundle --format=esm --outfile=dist/assets/index-DyW3pNuF.js --loader:.jsx=jsx --loader:.js=jsx --define:process.env.NODE_ENV='\"production\"' --define:import.meta.env='{}' && cp dist/assets/index-DyW3pNuF.css dist/assets/index-DClZrqE3.css",
+    "build": "node ./node_modules/esbuild/bin/esbuild src/main.jsx --bundle --format=esm --outfile=dist/assets/index-DyW3pNuF.js --loader:.jsx=jsx --loader:.js=jsx --define:process.env.NODE_ENV='\"production\"' --define:import.meta.env='{}' && cp dist/assets/index-DyW3pNuF.css dist/assets/index-DClZrqE3.css",
     "preview": "vite preview",
     "mcp:firebase": "firebase-mcp-server"
   },
