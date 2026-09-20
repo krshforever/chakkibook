@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
+import FloatingActionButton from './components/FloatingActionButton';
 import Dashboard from './pages/Dashboard';
 import NewEntry from './pages/NewEntry';
 import Khata from './pages/Khata';
@@ -17,6 +17,7 @@ import { findShopByPhone } from './firebase/firestore';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
+  const [previousTab, setPreviousTab] = useState('home');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [initializing, setInitializing] = useState(true);
 
