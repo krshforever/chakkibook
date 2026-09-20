@@ -125,31 +125,47 @@ export default function Settings() {
 
   return (
     <div className="app-container">
-      {/* Top Profile Card */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--card-bg)' }}>
+      {/* Top Profile & Logout Card */}
+      <div style={{
+        backgroundColor: '#ffffff',
+        border: '1.5px solid #cbd5e1',
+        borderRadius: '1rem',
+        padding: '1.25rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+      }}>
         <div>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Logged In ({userRole.toUpperCase()})
-          </span>
-          <h3 style={{ fontSize: '1.1rem', fontWeight: '800', margin: '2px 0 0 0' }}>
-            {currentUser?.email?.split('@')[0] || shop.phone}
+          <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+            Active Shop Account ({userRole || 'owner'})
+          </div>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#020617', margin: '2px 0 0 0' }}>
+            {shop.name || 'Atta Chakki Dukan'}
           </h3>
+          <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 500, marginTop: '2px' }}>
+            Mobile: {shop.phone || '9876543210'}
+          </div>
         </div>
         <button
           type="button"
           onClick={handleLogout}
           style={{
-            minHeight: '44px',
-            padding: '0.5rem 1rem',
-            borderRadius: '0.5rem',
-            backgroundColor: '#ef4444',
-            color: '#fff',
-            border: 'none',
-            fontWeight: '700',
-            cursor: 'pointer'
+            minHeight: '48px',
+            padding: '0 16px',
+            borderRadius: '0.75rem',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            border: '1.5px solid #fca5a5',
+            fontSize: '0.88rem',
+            fontWeight: 800,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
         >
-          🚪 Logout
+          🚪 Logout Karein
         </button>
       </div>
 
