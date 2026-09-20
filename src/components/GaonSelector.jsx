@@ -42,7 +42,7 @@ export default function GaonSelector({
     return sum;
   }, 0);
 
-  const isAllSelected = selectedVillage.toLowerCase() === 'all';
+  const isAllSelected = String(selectedVillage || 'all').toLowerCase() === 'all';
 
   return (
     <div
@@ -136,7 +136,7 @@ export default function GaonSelector({
 
       {/* 2. Individual Village Pills */}
       {villages.map((v) => {
-        const isSelected = selectedVillage.toLowerCase() === v.name.toLowerCase();
+        const isSelected = String(selectedVillage || 'all').toLowerCase() === String(v?.name || '').toLowerCase();
         let badgeVal = null;
         if (badgeType === 'pending') badgeVal = v.pendingCount;
         else if (badgeType === 'customers') badgeVal = v.customerCount;

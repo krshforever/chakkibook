@@ -89,23 +89,41 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
   const [customMsgText, setCustomMsgText] = useState('');
   const [copiedToast, setCopiedToast] = useState(false);
 
-  // 1. Filter customers by village
+  // Helper for safe date string formatting
+  const formatDateStr = (b) => {
+    if (!b) return '';
+    const raw = b.date || b.createdAt || b.dropOffDate || '';
+    if (typeof raw === 'string') {
+      return raw.split('T')[0];
+    }
+    if (typeof raw === 'number' || raw instanceof Date) {
+      try {
+        return new Date(raw).toISOString().split('T')[0];
+      } catch (e) {
+        return '';
+      }
+    }
+    return '';
+  };
+
+  // 1. Filter customers by village safely
   const villageFilteredCustomers = useMemo(() => {
-    if (!selectedVillage || selectedVillage === 'all') return customers;
-    const vTarget = selectedVillage.trim().toLowerCase();
-    return customers.filter((c) => (c.village || '').trim().toLowerCase() === vTarget);
+    if (!customers || !Array.isArray(customers)) return [];
+    const vTarget = String(selectedVillage || 'all').trim().toLowerCase();
+    if (!vTarget || vTarget === 'all') return customers.filter(Boolean);
+    return customers.filter((c) => c && String(c.village || '').trim().toLowerCase() === vTarget);
   }, [customers, selectedVillage]);
 
-  // 2. Metrics for Hero Banner
+  // 2. Metrics for Hero Banner safely
   const heroMetrics = useMemo(() => {
-    const list = villageFilteredCustomers;
-    const debtorsList = list.filter((c) => (c.balance || 0) > 0);
+    const list = villageFilteredCustomers || [];
+    const debtorsList = list.filter((c) => c && Number(c.balance || 0) > 0);
     const totalDues = debtorsList.reduce((sum, c) => sum + Number(c.balance || 0), 0);
     const debtorCount = debtorsList.length;
     const avgDebt = debtorCount > 0 ? Math.round(totalDues / debtorCount) : 0;
     
     const topDebtor = debtorsList.length > 0 
-      ? [...debtorsList].sort((a, b) => (b.balance || 0) - (a.balance || 0))[0] 
+      ? [...debtorsList].sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0))[0] 
       : null;
 
     return {
@@ -117,50 +135,55 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
     };
   }, [villageFilteredCustomers]);
 
-  // 3. Search & Tab Filtered Customers
+  // 3. Search & Tab Filtered Customers safely
   const sortedCustomers = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    let list = villageFilteredCustomers;
+    const q = String(searchQuery || '').toLowerCase().trim();
+    let list = villageFilteredCustomers || [];
 
     if (filterTab === 'dues') {
-      list = list.filter((c) => (c.balance || 0) > 0);
+      list = list.filter((c) => c && Number(c.balance || 0) > 0);
     } else if (filterTab === 'cleared') {
-      list = list.filter((c) => (c.balance || 0) <= 0);
+      list = list.filter((c) => c && Number(c.balance || 0) <= 0);
     }
 
     if (q) {
-      list = list.filter((c) => (
-        c.name.toLowerCase().includes(q) ||
-        (c.phone && c.phone.includes(q)) ||
-        (c.village && c.village.toLowerCase().includes(q))
+      list = list.filter((c) => c && (
+        String(c.name || '').toLowerCase().includes(q) ||
+        String(c.phone || '').includes(q) ||
+        String(c.village || '').toLowerCase().includes(q)
       ));
     }
 
-    return [...list].sort((a, b) => (b.balance || 0) - (a.balance || 0));
+    return [...list].sort((a, b) => Number(b.balance || 0) - Number(a.balance || 0));
   }, [villageFilteredCustomers, filterTab, searchQuery]);
 
-  // Active customer object
+  // Active customer object safely
   const activeCustomer = useMemo(() => {
-    return customers.find((c) => c.id === activeCustomerId) || null;
+    if (!activeCustomerId || !customers || !Array.isArray(customers)) return null;
+    return customers.find((c) => c && String(c.id) === String(activeCustomerId)) || null;
   }, [customers, activeCustomerId]);
 
-  // Active customer transactions with calculated running balance
+  // Active customer transactions with calculated running balance safely
   const activeCustomerTimeline = useMemo(() => {
-    if (!activeCustomer) return [];
+    if (!activeCustomer || !activeCustomer.id || !boris || !Array.isArray(boris)) return [];
 
     const rawBoris = boris.filter(
-      (b) => b.customerId === activeCustomer.id || b.customerName === activeCustomer.name
+      (b) => b && (
+        String(b.customerId) === String(activeCustomer.id) ||
+        (b.customerName && activeCustomer.name && String(b.customerName).toLowerCase() === String(activeCustomer.name).toLowerCase())
+      )
     );
 
     // Sort chronologically ascending to compute running balance from scratch
     const sortedAsc = [...rawBoris].sort((a, b) => {
-      const timeA = new Date(a.createdAt || a.date || a.dropOffDate || 0).getTime();
-      const timeB = new Date(b.createdAt || b.date || b.dropOffDate || 0).getTime();
+      const timeA = new Date(a?.createdAt || a?.date || a?.dropOffDate || 0).getTime();
+      const timeB = new Date(b?.createdAt || b?.date || b?.dropOffDate || 0).getTime();
       return timeA - timeB;
     });
 
     let runningBal = 0;
     const timelineWithBal = sortedAsc.map((item) => {
+      if (!item) return { runningBal };
       const isJama = item.grainType === 'Jama Payment' || item.type === 'payment';
       const isCredit = item.paymentMode === 'credit';
       
@@ -184,19 +207,19 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
   // Sync WhatsApp template text when template or active customer changes
   useEffect(() => {
-    if (!activeCustomer) return;
-    const shopName = shop.name || 'Atta Chakki';
+    if (!activeCustomer || !activeCustomer.name) return;
+    const shopName = shop?.name || 'Atta Chakki';
     const bal = activeCustomer.balance || 0;
-    const phone = shop.phone || '';
+    const phone = shop?.phone || '';
 
     let text = '';
     if (reminderTemplate === 'urgent') {
       text = `Namaste ${activeCustomer.name} ji,\n\nKripya dhayan dein ki ${shopName} par aapka ₹${bal} ka udhar kafi samay se baki hai.\nKripya is hafte tak bhugtan karke apna khata saaf karein.\n\nShop Contact: ${phone}\nDhanyawad!`;
     } else if (reminderTemplate === 'detailed') {
-      const unpaid = activeCustomerTimeline
-        .filter((b) => b.paymentMode === 'credit')
+      const unpaid = (activeCustomerTimeline || [])
+        .filter((b) => b && b.paymentMode === 'credit')
         .slice(0, 4)
-        .map((b) => `• ${b.grainType} (${b.inputWeight || 0}kg) - ₹${b.amount}`)
+        .map((b) => `• ${b.grainType || 'Pisai'} (${b.inputWeight || 0}kg) - ₹${b.amount || 0}`)
         .join('\n');
 
       text = `Namaste ${activeCustomer.name} ji,\n\n${shopName} Khata Statement:\nKul Baki Udhar: ₹${bal}\n\nRecent Credit Entries:\n${unpaid || '• Credit transactions'}\n\nKripya samay par bhugtan karein.\nContact: ${phone}\nDhanyawad!`;
@@ -354,7 +377,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         doc.addPage();
         y = 20;
       }
-      const dateStr = b.date || (b.createdAt ? b.createdAt.split('T')[0] : '');
+      const dateStr = formatDateStr(b);
       const itemDesc = b.grainType === 'Jama Payment'
         ? `Jama Payment${b.notes ? ` (${b.notes})` : ''}`
         : `${b.grainType}${b.outputType ? ` (${b.outputType})` : ''} - ${b.inputWeight || 0}kg`;
@@ -666,7 +689,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                     fontWeight: 900,
                     fontSize: '1.1rem'
                   }}>
-                    {activeCustomer.name.substring(0, 2).toUpperCase()}
+                    {(activeCustomer?.name ? String(activeCustomer.name).substring(0, 2).toUpperCase() : 'CU')}
                   </div>
                   <div>
                     <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
@@ -911,7 +934,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                   {activeCustomerTimeline.map((b) => {
                     const isJama = b.grainType === 'Jama Payment' || b.type === 'payment';
                     const isCredit = b.paymentMode === 'credit';
-                    const dateStr = b.date || (b.createdAt ? b.createdAt.split('T')[0] : '');
+                    const dateStr = formatDateStr(b);
 
                     return (
                       <div
@@ -1020,7 +1043,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                         fontWeight: 900,
                         fontSize: '0.95rem'
                       }}>
-                        {c.name.substring(0, 2).toUpperCase()}
+                        {(c?.name ? String(c.name).substring(0, 2).toUpperCase() : 'CU')}
                       </div>
 
                       <div>
@@ -1341,7 +1364,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                   {activeCustomerTimeline.map((b) => {
                     const isJama = b.grainType === 'Jama Payment' || b.type === 'payment';
                     const isCredit = b.paymentMode === 'credit';
-                    const dateStr = b.date || (b.createdAt ? b.createdAt.split('T')[0] : '');
+                    const dateStr = formatDateStr(b);
 
                     return (
                       <tr key={b.id} style={{ borderBottom: '1px solid #f1f5f9' }}>

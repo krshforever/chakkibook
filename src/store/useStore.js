@@ -324,25 +324,26 @@ export const useStore = create((set, get) => ({
     const boris = get().boris || [];
     const villageMap = new Map();
 
-    // Aggregate from customers
+    // Aggregate from customers safely
     customers.forEach((c) => {
-      const v = (c.village || '').trim();
+      if (!c) return;
+      const v = String(c.village || '').trim();
       if (!v) return;
       if (!villageMap.has(v)) {
         villageMap.set(v, { name: v, customerCount: 0, pendingCount: 0, totalDues: 0 });
       }
       const item = villageMap.get(v);
       item.customerCount += 1;
-      item.totalDues += (c.balance > 0 ? c.balance : 0);
+      item.totalDues += (Number(c.balance || 0) > 0 ? Number(c.balance) : 0);
     });
 
-    // Aggregate pending boris from current mode
+    // Aggregate pending boris from current mode safely
     boris.forEach((b) => {
-      if (b.status === 'pending' && b.mode === get().activeMode) {
-        let v = (b.customerVillage || '').trim();
+      if (b && b.status === 'pending' && b.mode === get().activeMode) {
+        let v = String(b.customerVillage || '').trim();
         if (!v && b.customerId) {
-          const cust = customers.find(c => c.id === b.customerId);
-          if (cust && cust.village) v = cust.village.trim();
+          const cust = customers.find(c => c && String(c.id) === String(b.customerId));
+          if (cust && cust.village) v = String(cust.village).trim();
         }
         if (v) {
           if (!villageMap.has(v)) {
@@ -353,7 +354,7 @@ export const useStore = create((set, get) => ({
       }
     });
 
-    return Array.from(villageMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(villageMap.values()).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
   },
 
   // Village Stats Calculator Helper
