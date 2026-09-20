@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "esbuild src/main.jsx --bundle --format=esm --outfile=dist/assets/index-DyW3pNuF.js --loader:.jsx=jsx --loader:.js=jsx --define:process.env.NODE_ENV='\"production\"'",
     "preview": "vite preview",
     "mcp:firebase": "firebase-mcp-server"
   },
