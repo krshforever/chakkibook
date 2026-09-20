@@ -8,6 +8,8 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Inventory from './pages/Inventory';
 import Login from './pages/Login';
+import AIAgentWidget from './components/AIAgentWidget';
+import ErrorBoundary from './components/ErrorBoundary';
 import { onAuthChange } from './firebase/auth';
 import { useStore } from './store/useStore';
 import { findShopByPhone } from './firebase/firestore';
@@ -63,9 +65,9 @@ export default function App() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#0f172a',
-        color: '#fbbf24',
-        fontFamily: 'sans-serif'
+        backgroundColor: '#fffbeb',
+        color: '#d97706',
+        fontFamily: "'Inter', system-ui, sans-serif"
       }}>
         <img 
           src="/logo.png" 
@@ -73,45 +75,48 @@ export default function App() {
           style={{ width: '80px', height: '80px', borderRadius: '1rem', marginBottom: '1rem' }} 
           onError={(e) => { e.target.style.display = 'none'; }}
         />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: '700' }}>🌾 Chakkibook Load Ho Raha Hai...</h2>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#b45309' }}>🌾 Chakkibook Load Ho Raha Hai...</h2>
       </div>
     );
   }
 
-  if (!currentUser) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
-  }
-
   return (
-    <div className="app-shell">
-      <Header />
-      
-      <main style={{ paddingBottom: '70px' }}>
-        {activeTab === 'home' && (
-          <Dashboard
-            setActiveTab={setActiveTab}
-            onSelectCustomer={handleSelectCustomer}
-          />
-        )}
-        {activeTab === 'entry' && (
-          <NewEntry
-            setActiveTab={setActiveTab}
-            initialCustomerId={selectedCustomer?.id}
-          />
-        )}
-        {activeTab === 'khata' && (
-          <Khata
-            selectedCustomer={selectedCustomer}
-            onClearSelectedCustomer={handleClearSelectedCustomer}
-          />
-        )}
-        {activeTab === 'stock' && <Inventory />}
-        {activeTab === 'analytics' && <Analytics />}
-        {activeTab === 'settings' && <Settings />}
-      </main>
+    <ErrorBoundary>
+      {!currentUser ? (
+        <Login onLoginSuccess={handleLoginSuccess} />
+      ) : (
+        <div className="app-shell">
+          <Header />
+          
+          <main style={{ paddingBottom: '70px' }}>
+            {activeTab === 'home' && (
+              <Dashboard
+                setActiveTab={setActiveTab}
+                onSelectCustomer={handleSelectCustomer}
+              />
+            )}
+            {activeTab === 'entry' && (
+              <NewEntry
+                setActiveTab={setActiveTab}
+                initialCustomerId={selectedCustomer?.id}
+              />
+            )}
+            {activeTab === 'khata' && (
+              <Khata
+                selectedCustomer={selectedCustomer}
+                onClearSelectedCustomer={handleClearSelectedCustomer}
+              />
+            )}
+            {activeTab === 'stock' && <Inventory />}
+            {activeTab === 'analytics' && <Analytics />}
+            {activeTab === 'settings' && <Settings />}
+          </main>
 
-      <AIAgentWidget />
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
-    </div>
+          <AIAgentWidget />
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
+      )}
+    </ErrorBoundary>
   );
 }
+
