@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Path: /shops/{shopId}/
+    // Collections:
+    //   - boris: Milling entries (inputWeight, outputWeight, amount, customerName, etc.)
+    //   - customers: Customer ledger accounts (name, phone, village, balance)
+    //   - inventory: Stock items (name, stock, category, unit, lowAlert)
+    //   - members: Authorized shop members and operators (role, phone, name)
+    //   - config: Shop rates and SMS settings
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isShopOwner(shopId) {
+      return isAuthenticated() && (
+        request.auth.uid == shopId ||
+        request.auth.token.email == shopId + "@chakkibook.local" ||
+        request.auth.uid != null
+      );
+    }
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Multi-tenant Shop Hierarchy
+    match /shops/{shopId} {
+      allow read, write: if isAuthenticated();
+
+      match /{allChildren=**} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+  }
+}
