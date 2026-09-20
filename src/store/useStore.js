@@ -639,6 +639,70 @@ export const useStore = create((set, get) => ({
     }
   },
 
+  machineLogs: [
+    { id: 'm1', date: todayISO, motorTemp: '42°C (Normal)', stoneWearPercent: 15, beltTension: 'OK', electricityUnits: 45, dieselLitres: 0, notes: 'Subah 8 baje stone cleaning ki' },
+    { id: 'm2', date: yesterdayISO, motorTemp: '45°C (Warm)', stoneWearPercent: 14, beltTension: 'OK', electricityUnits: 52, dieselLitres: 5, notes: 'Light jane par diesel generator chalaya' }
+  ],
+
+  // Backup & Restore Utilities
+  exportBackupJSON: () => {
+    const data = {
+      version: 'V4.0-ULTRA',
+      exportDate: new Date().toISOString(),
+      shop: get().shop,
+      customers: get().customers,
+      boris: get().boris,
+      inventory: get().inventory,
+      stockEntries: get().stockEntries,
+      expenses: get().expenses,
+      machineLogs: get().machineLogs
+    };
+    return JSON.stringify(data, null, 2);
+  },
+
+  restoreBackupJSON: (jsonString) => {
+    try {
+      const data = JSON.parse(jsonString);
+      if (data.customers) set({ customers: data.customers });
+      if (data.boris) set({ boris: data.boris });
+      if (data.inventory) set({ inventory: data.inventory });
+      if (data.stockEntries) set({ stockEntries: data.stockEntries });
+      if (data.expenses) set({ expenses: data.expenses });
+      if (data.machineLogs) set({ machineLogs: data.machineLogs });
+      if (data.shop) set((state) => ({ shop: { ...state.shop, ...data.shop } }));
+      return { success: true, message: 'Data successfully restored!' };
+    } catch (e) {
+      return { success: false, message: 'Invalid JSON backup file format.' };
+    }
+  },
+
+  addInventoryItem: async (item) => {
+    const newItem = {
+      id: `inv_${Date.now()}`,
+      shopId: get().shopId,
+      name: item.name,
+      category: item.category || 'other',
+      stock: Number(item.stock) || 0,
+      unit: item.unit || 'kg',
+      lowAlert: Number(item.lowAlert) || 20,
+      pricePerUnit: Number(item.pricePerUnit) || 0
+    };
+    set((state) => ({ inventory: [...state.inventory, newItem] }));
+    return newItem;
+  },
+
+  addMachineLog: (log) => {
+    const newLog = {
+      id: `m_${Date.now()}`,
+      date: new Date().toISOString(),
+      ...log
+    };
+    set((state) => ({ machineLogs: [newLog, ...state.machineLogs] }));
+    return newLog;
+  },
+
+  buildMarker: 'V4.0-ULTRA-BUILD-20260919-02',
+
   addExpense: (expense) => {
     const newExp = {
       id: `e_${Date.now()}`,
@@ -647,5 +711,10 @@ export const useStore = create((set, get) => ({
       ...expense
     };
     set((state) => ({ expenses: [newExp, ...state.expenses] }));
+    return newExp;
+  },
+
+  deleteExpense: (expenseId) => {
+    set((state) => ({ expenses: state.expenses.filter(e => e.id !== expenseId) }));
   }
 }));

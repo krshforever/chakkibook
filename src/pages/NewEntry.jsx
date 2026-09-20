@@ -483,6 +483,39 @@ export default function NewEntry({ setActiveTab, initialCustomerId }) {
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Kilograms (kg)
               </span>
+
+              {/* Quick Preset Weight Pills */}
+              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', marginTop: '10px', justifyContent: 'center' }}>
+                {[
+                  { label: '10 kg', val: 10 },
+                  { label: '20 kg', val: 20 },
+                  { label: '40 kg (1 Mann)', val: 40 },
+                  { label: '50 kg (Bori)', val: 50 },
+                  { label: '80 kg (2 Mann)', val: 80 }
+                ].map((p) => (
+                  <button
+                    key={p.val}
+                    type="button"
+                    onClick={() => {
+                      setInputWeight(p.val.toString());
+                      setIsKaddaOverridden(false);
+                    }}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '1rem',
+                      border: Number(inputWeight) === p.val ? '2px solid #fbbf24' : '1px solid rgba(255,255,255,0.15)',
+                      backgroundColor: Number(inputWeight) === p.val ? '#d97706' : 'rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      fontSize: '0.78rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Rate & Kadda Config Bar */}

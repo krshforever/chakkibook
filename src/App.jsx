@@ -4,7 +4,9 @@ import BottomNav from './components/BottomNav';
 import Dashboard from './pages/Dashboard';
 import NewEntry from './pages/NewEntry';
 import Khata from './pages/Khata';
+import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import Inventory from './pages/Inventory';
 import Login from './pages/Login';
 import { onAuthChange } from './firebase/auth';
 import { useStore } from './store/useStore';
@@ -99,6 +101,8 @@ export default function App() {
             onClearSelectedCustomer={handleClearSelectedCustomer}
           />
         )}
+        {activeTab === 'stock' && <Inventory />}
+        {activeTab === 'analytics' && <Analytics />}
         {activeTab === 'settings' && <Settings />}
       </main>
 

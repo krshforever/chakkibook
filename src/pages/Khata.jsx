@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import jsPDF from 'jspdf';
 import { useStore } from '../store/useStore';
 
 export default function Khata({ selectedCustomer: initialSelectedCustomer, onClearSelectedCustomer }) {
@@ -51,12 +52,12 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
   const activeCustomer = customers.find((c) => c.id === activeCustomerId);
 
-  // All transactions (both Chakki & Spellar) for this customer
+  // All transactions for active customer
   const customerStatements = useMemo(() => {
     if (!activeCustomerId) return [];
     return boris
       .filter((b) => b.customerId === activeCustomerId)
-      .sort((a, b) => new Date(b.createdAt || b.date || 0) - new Date(a.createdAt || a.date || 0));
+      .sort((a, b) => new Date(b.createdAt || b.doneDate || 0) - new Date(a.createdAt || a.date || 0));
   }, [boris, activeCustomerId]);
 
   // Handle Payment Collection (Jama Rashi)
@@ -70,6 +71,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
       type: 'payment',
       customerId: activeCustomer.id,
       customerName: activeCustomer.name,
+      customerPhone: activeCustomer.phone || '',
       grainType: '',
       inputWeight: 0,
       kaddaDeducted: 0,
@@ -100,32 +102,114 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
     }
   };
 
-  // WhatsApp Reminder Message
+  // WhatsApp Reminder
   const sendWhatsAppReminder = (cust) => {
     const text =
-      `Namaste ${cust.name} ji 🙏\n\n` +
-      `*${shop.name}* ki taraf se aapka hisab balance:\n` +
-      `Kul Udhar (Dues): *₹${cust.balance}*\n\n` +
-      `Kripya samay par bhugtan karein. Dhanyawad! 🌾`;
-    window.open(`https://api.whatsapp.com/send?phone=${cust.phone || ''}&text=${encodeURIComponent(text)}`, '_blank');
+      `🌾 *${shop.name}*\n` +
+      `Namaste ${cust.name} ji,\n` +
+      `Aapka total bakaya (udhar) rashi *₹${cust.balance}* hai.\n` +
+      `Kripya samay par bhugtan karein. Dhanyawad! 🙏`;
+
+    window.open(
+      `https://api.whatsapp.com/send?phone=${cust.phone || ''}&text=${encodeURIComponent(text)}`,
+      '_blank'
+    );
   };
 
-  // Inline Customer Creation
-  const handleAddCustomer = (e) => {
+  // PDF Statement Download Generator
+  const exportPDFStatement = () => {
+    if (!activeCustomer) return;
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(217, 119, 6);
+    doc.text(shop.name || 'Chakkibook Flour Mill & Spellar', 14, 20);
+
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Mobile: ${shop.phone || 'N/A'} | ${shop.address || 'Main Market'}`, 14, 26);
+
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(217, 119, 6);
+    doc.line(14, 30, 196, 30);
+
+    // Customer Title
+    doc.setFontSize(13);
+    doc.setTextColor(0);
+    doc.text(`GRAHAK KHATA STATEMENT: ${activeCustomer.name.toUpperCase()}`, 14, 40);
+
+    doc.setFontSize(9);
+    doc.setTextColor(80);
+    doc.text(`Phone: ${activeCustomer.phone || 'N/A'} | Gaon: ${activeCustomer.village || 'N/A'}`, 14, 46);
+    doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 14, 52);
+
+    // Dues Box
+    doc.setFillColor(254, 243, 199);
+    doc.rect(14, 58, 182, 14, 'F');
+    doc.setFontSize(11);
+    doc.setTextColor(180, 83, 9);
+    doc.text(`KUL BACHA HUA UDHAR (TOTAL DUES): RS ${activeCustomer.balance || 0}`, 20, 67);
+
+    // Table Header
+    let y = 82;
+    doc.setFontSize(9);
+    doc.setTextColor(255);
+    doc.setFillColor(30, 41, 59);
+    doc.rect(14, y - 6, 182, 9, 'F');
+    doc.text('Date', 18, y);
+    doc.text('Type / Item', 50, y);
+    doc.text('Qty / Wt', 105, y);
+    doc.text('Payment', 140, y);
+    doc.text('Amount', 170, y);
+
+    // Rows
+    y += 9;
+    doc.setTextColor(30);
+    customerStatements.forEach((st) => {
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+      const dStr = new Date(st.createdAt || st.doneDate || Date.now()).toLocaleDateString('en-IN');
+      const typeStr = st.type === 'payment' ? 'Jama Payment' : `${st.mode?.toUpperCase() || ''} ${st.grainType || ''}`;
+      const qtyStr = st.inputWeight ? `${st.inputWeight}kg` : (st.oilOutput ? `${st.oilOutput}L Tel` : '-');
+      const modeStr = st.paymentMode === 'credit' ? 'Udhar' : (st.paymentMode === 'upi' ? 'UPI' : 'Cash');
+      const amtStr = st.type === 'payment' ? `-Rs ${st.amount}` : `+Rs ${st.amount}`;
+
+      doc.text(dStr, 18, y);
+      doc.text(typeStr, 50, y);
+      doc.text(qtyStr, 105, y);
+      doc.text(modeStr, 140, y);
+      doc.text(amtStr, 170, y);
+
+      y += 8;
+    });
+
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text('Generated via Chakkibook Smart Ledger App', 14, 285);
+
+    doc.save(`Khata_Statement_${activeCustomer.name.replace(/\s+/g, '_')}.pdf`);
+  };
+
+  // Add Customer Modal Submit
+  const handleAddCustomerSubmit = (e) => {
     e.preventDefault();
     if (!custName.trim()) return;
 
     const created = addCustomer({
       name: custName.trim(),
       village: custVillage.trim(),
-      phone: custPhone.trim()
+      phone: custPhone.trim(),
+      balance: 0
     });
 
-    setActiveCustomerId(created.id);
-    setShowAddCust(false);
     setCustName('');
     setCustVillage('');
     setCustPhone('');
+    setShowAddCust(false);
+    if (created) setActiveCustomerId(created.id);
   };
 
   const handleBack = () => {
@@ -135,42 +219,29 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
 
   return (
     <div className="app-container">
-      {/* 1. Customer List View */}
       {!activeCustomer ? (
+        /* 1. Customer List View */
         <>
-          <div className="section-header">
-            <span>📖 Grahak Khata (Ledger)</span>
-            <button
-              type="button"
-              className="section-badge"
-              style={{ border: 'none', cursor: 'pointer', background: 'var(--primary-light)' }}
-              onClick={() => setShowAddCust(true)}
-            >
-              ➕ Naya Grahak
-            </button>
-          </div>
-
-          {/* Kul Udhar Banner Card */}
-          <div
-            className="card"
-            style={{
-              background: 'var(--primary-light)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '14px 16px'
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-muted)' }}>
-                Kul Udhar (Total Dues)
-              </span>
-              <div className="big-number" style={{ color: 'var(--danger)', marginTop: '2px' }}>
-                ₹ {totalOutstandingDues.toLocaleString('en-IN')}
+          {/* Dues Header */}
+          <div className="card" style={{ background: 'var(--card-bg)', border: '1px solid var(--danger)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '0.8rem', color: 'var(--danger)', fontWeight: 700, textTransform: 'uppercase' }}>
+                  🔴 Total Market Udhar (Dues)
+                </span>
+                <h2 className="big-number" style={{ color: 'var(--danger)', fontSize: '1.8rem', margin: '2px 0 0 0' }}>
+                  ₹ {totalOutstandingDues.toLocaleString()}
+                </h2>
               </div>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              <strong>{customers.length}</strong> Grahak
+              <button
+                type="button"
+                onClick={() => setShowAddCust(true)}
+                className="big-btn"
+                style={{ width: 'auto', padding: '0.6rem 1rem', minHeight: '44px', fontSize: '0.9rem' }}
+              >
+                <span>➕</span>
+                <span>Naya Grahak</span>
+              </button>
             </div>
           </div>
 
@@ -207,7 +278,6 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                     <strong style={{ fontSize: '1.05rem', color: 'var(--text-main)' }}>{cust.name}</strong>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                       📍 {cust.village || 'Gaon'} • 📱 {cust.phone || 'No phone'}
-                      {cust.notes ? ` • ${cust.notes}` : ''}
                     </div>
                   </div>
 
@@ -232,9 +302,8 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
           </div>
         </>
       ) : (
-        /* 2. Customer Full Ledger Statement View */
+        /* 2. Customer Ledger View */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {/* Back button */}
           <button
             type="button"
             onClick={handleBack}
@@ -244,7 +313,7 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
             ← Wapas Grahak List
           </button>
 
-          {/* Customer Header Summary Card */}
+          {/* Customer Header Card with PDF & WhatsApp buttons */}
           <div className="card" style={{ background: 'var(--primary-light)', border: '1.5px solid var(--card-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
@@ -254,49 +323,42 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                 </div>
               </div>
 
-              {activeCustomer.balance > 0 && (
+              <div style={{ display: 'flex', gap: '6px' }}>
                 <button
                   type="button"
-                  onClick={() => sendWhatsAppReminder(activeCustomer)}
-                  className="section-badge"
+                  onClick={exportPDFStatement}
                   style={{
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: 'var(--success)',
-                    color: '#ffffff',
-                    padding: '6px 10px',
-                    fontSize: '0.8rem'
+                    background: '#0284c7', color: '#fff', border: 'none', borderRadius: '0.5rem',
+                    padding: '6px 10px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
                   }}
                 >
-                  📲 Remind
+                  📄 PDF Bill
                 </button>
-              )}
+
+                {activeCustomer.balance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => sendWhatsAppReminder(activeCustomer)}
+                    style={{
+                      background: '#16a34a', color: '#fff', border: 'none', borderRadius: '0.5rem',
+                      padding: '6px 10px', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
+                    }}
+                  >
+                    📲 WhatsApp
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div
-              style={{
-                marginTop: '12px',
-                borderTop: '1px dashed var(--card-border)',
-                paddingTop: '10px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-            >
+            <div style={{ marginTop: '12px', borderTop: '1px dashed var(--card-border)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Kul Bacha Hua Udhar (Dues):</span>
-              <span
-                className="big-number"
-                style={{
-                  color: activeCustomer.balance > 0 ? 'var(--danger)' : 'var(--success)',
-                  fontSize: '1.6rem'
-                }}
-              >
+              <span className="big-number" style={{ color: activeCustomer.balance > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '1.6rem' }}>
                 ₹ {activeCustomer.balance || 0}
               </span>
             </div>
           </div>
 
-          {/* Payment Collection Form (Udhar Jama) */}
+          {/* Payment Collection Form */}
           <div className="card">
             <div className="section-header">
               <span>💵 Jama Karein (Collect Payment)</span>
@@ -314,99 +376,91 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
                   required
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
                   <button
                     type="button"
                     className={`pill-btn ${payMode === 'cash' ? 'active' : ''}`}
                     onClick={() => setPayMode('cash')}
-                    style={{ minHeight: '48px', height: '48px' }}
                   >
-                    Cash
+                    Nokad Cash
                   </button>
                   <button
                     type="button"
                     className={`pill-btn ${payMode === 'upi' ? 'active' : ''}`}
                     onClick={() => setPayMode('upi')}
-                    style={{ minHeight: '48px', height: '48px' }}
                   >
                     UPI
+                  </button>
+                  <button
+                    type="button"
+                    className={`pill-btn ${payMode === 'credit' ? 'active' : ''}`}
+                    onClick={() => setPayMode('credit')}
+                  >
+                    Udhar
                   </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Payment notes (Optional)"
-                  value={payNotes}
-                  onChange={(e) => setPayNotes(e.target.value)}
-                  style={{ flex: 1 }}
-                />
-                <button type="submit" className="big-btn" style={{ width: 'auto', minWidth: '130px' }}>
-                  ₹ Jama Karein
-                </button>
-              </div>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Notes / Receipt No (Optional)"
+                value={payNotes}
+                onChange={(e) => setPayNotes(e.target.value)}
+              />
+
+              <button type="submit" className="big-btn" style={{ minHeight: '48px' }}>
+                <span>💰</span>
+                <span>JAMA RASHI (COLLECT PAYMENT)</span>
+              </button>
             </form>
           </div>
 
-          {/* Complete Ledger History (Chakki + Spellar entries + Payments) */}
-          <div>
+          {/* Transaction History Statement */}
+          <div className="card">
             <div className="section-header">
-              <span>📜 Statement / Hisab Kitab ({customerStatements.length})</span>
+              <span>📜 Transaction History ({customerStatements.length})</span>
             </div>
 
             {customerStatements.length === 0 ? (
-              <div
-                className="card"
-                style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}
-              >
-                Is grahak ki koi purani entry nahi mili.
+              <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>
+                Koi purana transaction record nahi hai.
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {customerStatements.map((txn) => {
-                  const isPayment = txn.type === 'payment';
-                  const dateFormatted = new Date(txn.createdAt || txn.date || Date.now()).toLocaleDateString('hi-IN', {
-                    day: 'numeric',
-                    month: 'short'
-                  });
-
+                {customerStatements.map((st) => {
+                  const isPayment = st.type === 'payment';
+                  const isCredit = st.paymentMode === 'credit';
                   return (
-                    <div key={txn.id} className="entry-row">
-                      <div className="entry-row-left">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                            {dateFormatted}
-                          </span>
-                          <strong style={{ fontSize: '0.95rem' }}>
-                            {isPayment
-                              ? '💵 Payment Received'
-                              : txn.type === 'pisai'
-                              ? `🌾 ${txn.grainType || 'Wheat'} ${txn.inputWeight ? `${txn.inputWeight}kg` : ''}`
-                              : txn.type === 'pirai'
-                              ? `🫒 Sarson Pirai ${txn.inputWeight ? `${txn.inputWeight}kg` : ''}`
-                              : `📦 Khali ${txn.inputWeight ? `${txn.inputWeight}kg` : ''}`}
-                          </strong>
-                        </div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                          {txn.notes || (isPayment ? `Jama via ${txn.paymentMode?.toUpperCase()}` : txn.paymentMode === 'credit' ? 'Udhar Bori' : 'Paid')}
+                    <div
+                      key={st.id}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '0.5rem',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderLeft: isPayment ? '4px solid #22c55e' : (isCredit ? '4px solid #ef4444' : '4px solid #38bdf8'),
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <div>
+                        <strong style={{ fontSize: '0.95rem' }}>
+                          {isPayment ? '💚 Jama Cash Payment' : `${st.mode?.toUpperCase()} • ${st.grainType || ''}`}
+                        </strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {st.inputWeight ? `${st.inputWeight}kg` : (st.oilOutput ? `${st.oilOutput}L Tel` : '')}{' '}
+                          • {new Date(st.createdAt || st.doneDate || Date.now()).toLocaleDateString()}
+                          {st.notes ? ` • ${st.notes}` : ''}
                         </div>
                       </div>
 
-                      <div className="entry-row-right">
-                        <div
-                          style={{
-                            fontFamily: 'var(--font-head)',
-                            fontSize: '1.15rem',
-                            fontWeight: 800,
-                            color: isPayment ? 'var(--success)' : 'var(--danger)'
-                          }}
-                        >
-                          {isPayment ? `- ₹${txn.amount}` : `+ ₹${txn.amount}`}
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: isPayment ? '#4ade80' : (isCredit ? '#f87171' : '#fff') }}>
+                          {isPayment ? `-₹ ${st.amount}` : `+₹ ${st.amount}`}
                         </div>
-                        <span className={`status-pill ${isPayment ? 'cash' : txn.paymentMode || 'credit'}`}>
-                          {isPayment ? '🟢 Jama' : txn.paymentMode === 'credit' ? '🔴 Udhar' : '🟢 Paid'}
+                        <span className={`status-pill ${isPayment ? 'cash' : (st.paymentMode || 'cash')}`}>
+                          {isPayment ? 'Jama' : (st.paymentMode === 'credit' ? 'Udhar' : 'Paid')}
                         </span>
                       </div>
                     </div>
@@ -418,73 +472,41 @@ export default function Khata({ selectedCustomer: initialSelectedCustomer, onCle
         </div>
       )}
 
-      {/* Modal to Add New Customer */}
+      {/* Add Customer Modal */}
       {showAddCust && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '16px'
-          }}
-        >
-          <div className="card" style={{ width: '100%', maxWidth: '420px', background: 'var(--bg-elevated)' }}>
-            <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>➕ Naya Grahak Jodein</h3>
-            <form onSubmit={handleAddCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div>
-                <label className="input-label">Grahak ka Naam (Required)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Ramesh Kumar"
-                  value={custName}
-                  onChange={(e) => setCustName(e.target.value)}
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Gaon / Village (Optional)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Rampur"
-                  value={custVillage}
-                  onChange={(e) => setCustVillage(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Mobile Number (Optional)</label>
-                <input
-                  type="tel"
-                  className="form-input"
-                  placeholder="e.g. 9812345678"
-                  value={custPhone}
-                  onChange={(e) => setCustPhone(e.target.value)}
-                />
-              </div>
-
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px'
+        }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px', background: 'var(--card-bg)' }}>
+            <h3 style={{ fontSize: '1.1rem', marginBottom: '12px' }}>➕ Naya Grahak Add Karein</h3>
+            <form onSubmit={handleAddCustomerSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Grahak ka Naam (e.g. Ramesh)"
+                value={custName}
+                onChange={(e) => setCustName(e.target.value)}
+                required
+                autoFocus
+              />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Gaon / Village (Optional)"
+                value={custVillage}
+                onChange={(e) => setCustVillage(e.target.value)}
+              />
+              <input
+                type="tel"
+                className="form-input"
+                placeholder="Mobile Number (📱 Auto-SMS)"
+                value={custPhone}
+                onChange={(e) => setCustPhone(e.target.value)}
+              />
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
-                <button type="submit" className="big-btn" style={{ height: '48px', minHeight: '48px' }}>
-                  Grahak Save Karein
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary-action"
-                  style={{ height: '48px', minHeight: '48px' }}
-                  onClick={() => setShowAddCust(false)}
-                >
-                  Cancel
-                </button>
+                <button type="submit" className="big-btn" style={{ minHeight: '48px' }}>Save Grahak</button>
+                <button type="button" className="btn-secondary-action" style={{ minHeight: '48px' }} onClick={() => setShowAddCust(false)}>Cancel</button>
               </div>
             </form>
           </div>

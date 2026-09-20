@@ -34,14 +34,49 @@ export default function Header() {
           </div>
         </div>
 
-        <button
-          onClick={toggleTheme}
-          className="theme-toggle-btn"
-          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-          aria-label="Toggle Theme"
-        >
-          {theme === 'light' ? '🌙' : '☀️'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span 
+            style={{ 
+              fontSize: '0.65rem', 
+              fontWeight: '700', 
+              background: 'rgba(34, 197, 94, 0.15)', 
+              color: '#22c55e', 
+              border: '1px solid rgba(34, 197, 94, 0.4)',
+              padding: '2px 6px', 
+              borderRadius: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e', display: 'inline-block' }}></span>
+            Live
+          </span>
+
+          <span 
+            style={{ 
+              fontSize: '0.68rem', 
+              fontWeight: '800', 
+              background: 'linear-gradient(135deg, #10b981, #059669)', 
+              color: '#ffffff', 
+              padding: '3px 8px', 
+              borderRadius: '1rem',
+              letterSpacing: '0.04em',
+              boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)'
+            }}
+          >
+            V4.0-ULTRA
+          </span>
+
+          <button
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            aria-label="Toggle Theme"
+          >
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+        </div>
       </div>
 
       {/* Mode Toggle Bar: Chakki vs Spellar */}

@@ -5,7 +5,9 @@ export default function BottomNav({ activeTab, setActiveTab }) {
     { id: 'home', label: 'Home', icon: '🏠' },
     { id: 'entry', label: 'Naya', icon: '➕' },
     { id: 'khata', label: 'Khata', icon: '📖' },
-    { id: 'settings', label: 'Rates', icon: '⚙️' }
+    { id: 'stock', label: 'Stock', icon: '📦' },
+    { id: 'analytics', label: 'Hisab', icon: '📊' },
+    { id: 'settings', label: 'Setting', icon: '⚙️' }
   ];
 
   return (
