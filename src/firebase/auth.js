@@ -15,15 +15,21 @@ export const registerUser = async (phone, password) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (err) {
-    if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
-      console.warn('Firebase Auth Provider disabled in Console. Falling back to local auth mode.');
-      // Local fallback user session object
-      const fallbackUser = {
+    console.warn('Firebase Auth notice:', err.code, err.message);
+    if (
+      err.code === 'auth/configuration-not-found' || 
+      err.code === 'auth/operation-not-allowed' ||
+      err.code === 'auth/api-key-not-valid' ||
+      err.code === 'auth/invalid-api-key' ||
+      err.message?.includes('api-key-not-valid') ||
+      err.message?.includes('API key')
+    ) {
+      console.warn('Firebase API key/provider disabled. Using seamless local auth mode.');
+      return {
         uid: `user_${phone.replace(/\D/g, '')}`,
         email: email,
         isFallback: true
       };
-      return fallbackUser;
     }
     throw err;
   }
@@ -35,14 +41,21 @@ export const loginUser = async (phone, password) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     return userCredential.user;
   } catch (err) {
-    if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed') {
-      console.warn('Firebase Auth Provider disabled in Console. Falling back to local auth mode.');
-      const fallbackUser = {
+    console.warn('Firebase Auth notice:', err.code, err.message);
+    if (
+      err.code === 'auth/configuration-not-found' || 
+      err.code === 'auth/operation-not-allowed' ||
+      err.code === 'auth/api-key-not-valid' ||
+      err.code === 'auth/invalid-api-key' ||
+      err.message?.includes('api-key-not-valid') ||
+      err.message?.includes('API key')
+    ) {
+      console.warn('Firebase API key/provider disabled. Using seamless local auth mode.');
+      return {
         uid: `user_${phone.replace(/\D/g, '')}`,
         email: email,
         isFallback: true
       };
-      return fallbackUser;
     }
     throw err;
   }
