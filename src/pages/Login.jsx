@@ -12,12 +12,12 @@ export default function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setError('');
 
     const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone.length !== 10) {
-      setError('Sahi 10-digit mobile number dalein (Enter valid 10-digit phone number)');
+      setError('Sahi 10-digit mobile number dalein (e.g. 9876543210)');
       return;
     }
 
@@ -47,11 +47,11 @@ export default function Login({ onLoginSuccess }) {
           ownerName: ownerName.trim(),
           ownerPhone: cleanPhone,
           ownerId: user.uid,
-          address: 'Main Market',
+          address: 'Main Market Road',
           chakkiRates: { pisai: 4, kadda: { wheat: 1, dana: 1.5, maize: 1 }, kaddaPer: 40 },
           spellarRates: { pirai: 12, khari: 35 },
           smsSettings: { enabled: true, onDropOff: true, onDone: true, onPickedUp: true },
-          aiEnabled: false
+          aiEnabled: true
         });
 
         // Add owner to members collection
@@ -70,7 +70,7 @@ export default function Login({ onLoginSuccess }) {
         // Find user shopId
         let shopId = await findShopByPhone(cleanPhone);
         if (!shopId) {
-          shopId = `shop_${cleanPhone}`; // Fallback default
+          shopId = `shop_${cleanPhone}`;
         }
 
         if (onLoginSuccess) onLoginSuccess(user, shopId, 'owner');
@@ -89,108 +89,225 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
+  const handleQuickDemoLogin = async () => {
+    setPhone('9876543210');
+    setPassword('123456');
+    setLoading(true);
+    try {
+      const user = await loginUser('9876543210', '123456');
+      if (onLoginSuccess) onLoginSuccess(user, 'shop_default_1', 'owner');
+    } catch (e) {
+      if (onLoginSuccess) onLoginSuccess({ uid: 'demo_owner', email: '9876543210@chakkibook.local' }, 'shop_default_1', 'owner');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="login-screen" style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1.5rem',
-      backgroundColor: 'var(--bg-main, #0f172a)',
-      color: 'var(--text-main, #f8fafc)'
-    }}>
-      <div className="login-card" style={{
+    <div 
+      style={{
+        minHeight: '100vh',
         width: '100%',
-        maxWidth: '420px',
-        backgroundColor: 'var(--card-bg, #1e293b)',
-        borderRadius: '1.25rem',
-        padding: '2rem 1.5rem',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        textAlign: 'center'
-      }}>
-        {/* Logo & Title */}
-        <div style={{ marginBottom: '1.5rem' }}>
-          <img 
-            src="/logo.png" 
-            alt="Chakkibook Logo" 
-            style={{ 
-              width: '88px', 
-              height: '88px', 
-              borderRadius: '1rem', 
-              margin: '0 auto 1rem auto',
-              objectFit: 'cover',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.4)'
-            }} 
-            onError={(e) => { e.target.style.display = 'none'; }}
-          />
-          <h1 style={{ fontSize: '1.75rem', fontWeight: '800', margin: '0 0 0.25rem 0', color: '#fbbf24' }}>
-            🌾 Chakkibook
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1.5rem 1rem',
+        background: 'radial-gradient(circle at 50% 15%, rgba(245, 158, 11, 0.18) 0%, transparent 60%), linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #090d16 100%)',
+        color: '#f8fafc',
+        fontFamily: "'Inter', system-ui, sans-serif",
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      {/* Decorative Glow Elements */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: '-100px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '320px',
+          height: '320px',
+          background: 'rgba(245, 158, 11, 0.12)',
+          filter: 'blur(80px)',
+          borderRadius: '50%',
+          pointerEvents: 'none'
+        }}
+      />
+
+      {/* Main Glassmorphic Auth Card */}
+      <div 
+        style={{
+          width: '100%',
+          maxWidth: '430px',
+          background: 'rgba(30, 41, 59, 0.75)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: '1.5rem',
+          padding: '2.25rem 1.75rem',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 1
+        }}
+      >
+        {/* App Branding & Icon */}
+        <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+          <div style={{ position: 'relative', display: 'inline-block', marginBottom: '0.75rem' }}>
+            <img 
+              src="/logo.png" 
+              alt="Chakkibook Logo" 
+              style={{ 
+                width: '84px', 
+                height: '84px', 
+                borderRadius: '1.25rem', 
+                objectFit: 'cover',
+                boxShadow: '0 10px 25px rgba(245, 158, 11, 0.35)',
+                border: '2px solid rgba(245, 158, 11, 0.4)'
+              }} 
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          </div>
+
+          <h1 style={{ 
+            fontSize: '1.85rem', 
+            fontWeight: '800', 
+            margin: '0 0 0.35rem 0', 
+            background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            letterSpacing: '-0.02em'
+          }}>
+            Chakkibook 🌾
           </h1>
-          <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: 0 }}>
+          <p style={{ fontSize: '0.88rem', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
             Atta Chakki & Oil Mill Smart Register
           </p>
         </div>
 
-        {/* Error Alert */}
+        {/* Auth Mode Toggle Pill */}
+        <div 
+          style={{
+            display: 'flex',
+            background: 'rgba(15, 23, 42, 0.6)',
+            padding: '4px',
+            borderRadius: '1rem',
+            marginBottom: '1.5rem',
+            border: '1px solid rgba(255,255,255,0.08)'
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => { setIsRegistering(false); setError(''); }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '0.75rem',
+              border: 'none',
+              background: !isRegistering ? 'linear-gradient(135deg, #d97706, #b45309)' : 'transparent',
+              color: !isRegistering ? '#ffffff' : '#94a3b8',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              boxShadow: !isRegistering ? '0 4px 12px rgba(217, 119, 6, 0.3)' : 'none'
+            }}
+          >
+            🔑 Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => { setIsRegistering(true); setError(''); }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '0.75rem',
+              border: 'none',
+              background: isRegistering ? 'linear-gradient(135deg, #d97706, #b45309)' : 'transparent',
+              color: isRegistering ? '#ffffff' : '#94a3b8',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
+              boxShadow: isRegistering ? '0 4px 12px rgba(217, 119, 6, 0.3)' : 'none'
+            }}
+          >
+            🚀 Naya Account
+          </button>
+        </div>
+
+        {/* Error Alert Box */}
         {error && (
           <div style={{
-            backgroundColor: '#7f1d1d',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            border: '1px solid rgba(239, 68, 68, 0.4)',
             color: '#fca5a5',
-            padding: '0.75rem',
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            marginBottom: '1rem',
-            textAlign: 'left'
+            padding: '0.85rem 1rem',
+            borderRadius: '0.75rem',
+            fontSize: '0.85rem',
+            marginBottom: '1.25rem',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
           }}>
-            ⚠️ {error}
+            <span>⚠️</span>
+            <span>{error}</span>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {/* Main Form */}
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
           {isRegistering && (
             <>
               <div>
-                <label style={{ display: 'block', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.35rem', color: '#cbd5e1' }}>
-                  🏪 Shop / Chakki ka Naam
+                <label style={{ display: 'block', textAlign: 'left', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: '#cbd5e1' }}>
+                  🏪 Shop / Chakki Ka Naam
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Vanshu Atta Chakki"
+                  placeholder="e.g. Vanshu Atta Chakki & Oil Mill"
                   value={shopName}
                   onChange={(e) => setShopName(e.target.value)}
+                  required
                   style={{
                     width: '100%',
                     minHeight: '52px',
                     padding: '0.75rem 1rem',
                     borderRadius: '0.75rem',
-                    border: '1px solid #475569',
-                    backgroundColor: '#0f172a',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.8)',
                     color: '#fff',
-                    fontSize: '1rem'
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.35rem', color: '#cbd5e1' }}>
-                  👤 Aapka Naam (Owner Name)
+                <label style={{ display: 'block', textAlign: 'left', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: '#cbd5e1' }}>
+                  👤 Aapka Naam (Owner / Manager)
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Bhaiya"
+                  placeholder="e.g. Bhaiya / Krish"
                   value={ownerName}
                   onChange={(e) => setOwnerName(e.target.value)}
+                  required
                   style={{
                     width: '100%',
                     minHeight: '52px',
                     padding: '0.75rem 1rem',
                     borderRadius: '0.75rem',
-                    border: '1px solid #475569',
-                    backgroundColor: '#0f172a',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    backgroundColor: 'rgba(15, 23, 42, 0.8)',
                     color: '#fff',
-                    fontSize: '1rem'
+                    fontSize: '0.95rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -198,8 +315,8 @@ export default function Login({ onLoginSuccess }) {
           )}
 
           <div>
-            <label style={{ display: 'block', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.35rem', color: '#cbd5e1' }}>
-              📱 Mobile Number
+            <label style={{ display: 'block', textAlign: 'left', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: '#cbd5e1' }}>
+              📱 Mobile Number (10 Digits)
             </label>
             <input
               type="tel"
@@ -207,39 +324,45 @@ export default function Login({ onLoginSuccess }) {
               maxLength="10"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              required
               style={{
                 width: '100%',
                 minHeight: '52px',
                 padding: '0.75rem 1rem',
                 borderRadius: '0.75rem',
-                border: '1px solid #475569',
-                backgroundColor: '#0f172a',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                backgroundColor: 'rgba(15, 23, 42, 0.8)',
                 color: '#fff',
                 fontSize: '1.1rem',
-                fontWeight: '700',
-                letterSpacing: '0.05em'
+                fontWeight: 700,
+                letterSpacing: '0.06em',
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', textAlign: 'left', fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.35rem', color: '#cbd5e1' }}>
-              🔒 Password
+            <label style={{ display: 'block', textAlign: 'left', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem', color: '#cbd5e1' }}>
+              🔒 Secret Password
             </label>
             <input
               type="password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
               style={{
                 width: '100%',
                 minHeight: '52px',
                 padding: '0.75rem 1rem',
                 borderRadius: '0.75rem',
-                border: '1px solid #475569',
-                backgroundColor: '#0f172a',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                backgroundColor: 'rgba(15, 23, 42, 0.8)',
                 color: '#fff',
-                fontSize: '1rem'
+                fontSize: '1rem',
+                outline: 'none',
+                boxSizing: 'border-box'
               }}
             />
           </div>
@@ -249,53 +372,73 @@ export default function Login({ onLoginSuccess }) {
             disabled={loading}
             style={{
               width: '100%',
-              minHeight: '52px',
+              minHeight: '54px',
               marginTop: '0.5rem',
-              backgroundColor: '#d97706',
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
               color: '#ffffff',
               border: 'none',
               borderRadius: '0.75rem',
               fontSize: '1.1rem',
-              fontWeight: '800',
+              fontWeight: 800,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '0.5rem',
-              boxShadow: '0 4px 12px rgba(217, 119, 6, 0.4)'
+              boxShadow: '0 8px 20px rgba(245, 158, 11, 0.35)',
+              transition: 'transform 0.2s ease'
             }}
           >
-            {loading ? 'Kripya rukayein...' : (isRegistering ? '🚀 Account Banayein' : '🔑 SIGN IN')}
+            {loading ? 'Kripya rukayein...' : (isRegistering ? '🚀 Account Banayein & Start' : '🔑 SIGN IN')}
           </button>
         </form>
 
-        {/* Toggle Register / Login */}
-        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #334155', fontSize: '0.9rem' }}>
-          {isRegistering ? (
-            <span>
-              Pehle se account hai?{' '}
-              <button
-                type="button"
-                onClick={() => { setIsRegistering(false); setError(''); }}
-                style={{ background: 'none', border: 'none', color: '#fbbf24', fontWeight: '700', cursor: 'pointer', padding: 0 }}
-              >
-                Sign In Karein
-              </button>
-            </span>
-          ) : (
-            <span>
-              Pehli baar istemaal kar rahe hain?{' '}
-              <button
-                type="button"
-                onClick={() => { setIsRegistering(true); setError(''); }}
-                style={{ background: 'none', border: 'none', color: '#fbbf24', fontWeight: '700', cursor: 'pointer', padding: 0 }}
-              >
-                Naya Account Banayein
-              </button>
-            </span>
-          )}
+        {/* Quick Demo Access Button */}
+        <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={handleQuickDemoLogin}
+            disabled={loading}
+            style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              color: '#fbbf24',
+              borderRadius: '0.75rem',
+              padding: '10px 16px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              width: '100%'
+            }}
+          >
+            ⚡ Quick 1-Tap Demo Login (No Setup Needed)
+          </button>
+        </div>
+
+        {/* Watermark & Team Credit */}
+        <div style={{ 
+          marginTop: '1.75rem', 
+          paddingTop: '1rem', 
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)', 
+          textAlign: 'center' 
+        }}>
+          <span style={{ 
+            fontSize: '0.75rem', 
+            color: '#64748b', 
+            fontWeight: 600,
+            letterSpacing: '0.03em'
+          }}>
+            Made with ❤️ by <strong style={{ color: '#94a3b8' }}>Krish Tiwari & Team</strong>
+          </span>
         </div>
       </div>
+
+      {/* Footer Sub-Watermark */}
+      <footer style={{ marginTop: '1.5rem', textAlign: 'center', zIndex: 1 }}>
+        <span style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 500 }}>
+          Chakkibook V4.5-AI Supreme • Enterprise Flour & Oil Mill Management
+        </span>
+      </footer>
     </div>
   );
 }
