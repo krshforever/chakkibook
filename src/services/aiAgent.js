@@ -681,3 +681,9 @@ export async function processAICommand(userInput, store) {
     success: true
   };
 }
+
+export async function queryAIAgent(userInput, context = {}) {
+  const result = await processAICommand(userInput, context);
+  return result?.reply || 'Dhanyawad! Command process ho gaya hai.';
+}
+
