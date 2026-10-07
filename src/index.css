@@ -381,3 +381,18 @@ body {
 .toast {
   box-shadow: 0 8px 24px rgba(33, 26, 18, 0.12); /* SHADOW AUDIT: allowed on toast */
 }
+
+/* ACCESSIBILITY & FOCUS-VISIBLE RINGS */
+:focus-visible {
+  outline: 2px solid hsl(var(--brand-500));
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid hsl(var(--brand-500));
+  outline-offset: 2px;
+}

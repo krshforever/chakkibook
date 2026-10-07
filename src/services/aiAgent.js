@@ -81,8 +81,155 @@ export function generatePredictiveInsights(store) {
 }
 
 // -------------------------------------------------------------
-// 2. UNDO ACTION HANDLER
+// 2. TWO-PHASE ACTION COMMITTER & UNDO HANDLER
 // -------------------------------------------------------------
+export async function commitAction(plannedAction, store) {
+  if (!plannedAction || !plannedAction.type) {
+    return { success: false, reply: 'Kripya sahi action select karein.' };
+  }
+
+  const { type, payload } = plannedAction;
+  const {
+    addBori,
+    markBoriDone,
+    addCustomer,
+    updateShopRates,
+    addExpense
+  } = store;
+
+  try {
+    if (type === 'CREATE_BORI' && addBori) {
+      const createdBori = await addBori(payload);
+      return {
+        success: true,
+        reply:
+          `[BORI ENTRY COMMITTED]\n` +
+          `• Customer: ${createdBori.customerName} (${createdBori.customerVillage || 'Main'})\n` +
+          `• Order: ${createdBori.inputWeight} kg ${createdBori.grainType}\n` +
+          `• Amount: Rs ${createdBori.amount}\n` +
+          `• Status: PENDING IN QUEUE`,
+        actionExecuted: {
+          type: 'CREATE_BORI',
+          title: plannedAction.title,
+          details: plannedAction.details,
+          stateModifications: plannedAction.stateModifications,
+          undoPayload: {
+            boriId: createdBori.id,
+            customerId: createdBori.customerId,
+            customerName: createdBori.customerName,
+            inputWeight: createdBori.inputWeight,
+            amount: createdBori.amount,
+            paymentMode: createdBori.paymentMode
+          }
+        }
+      };
+    }
+
+    if (type === 'RECORD_PAYMENT' && addBori) {
+      const createdPayment = await addBori(payload);
+      const customers = store.customers || [];
+      const matchingCustomer = customers.find((c) => c.id === payload.customerId);
+      const oldBalance = matchingCustomer ? matchingCustomer.balance : 0;
+      const newBalance = Math.max(0, oldBalance - payload.amount);
+
+      return {
+        success: true,
+        reply:
+          `[PAYMENT COMMITTED]\n` +
+          `• Customer: ${payload.customerName}\n` +
+          `• Amount Received: Rs ${payload.amount}\n` +
+          `• Updated Balance: Rs ${newBalance}`,
+        actionExecuted: {
+          type: 'RECORD_PAYMENT',
+          title: plannedAction.title,
+          details: plannedAction.details,
+          stateModifications: plannedAction.stateModifications,
+          undoPayload: {
+            customerId: payload.customerId,
+            customerName: payload.customerName,
+            amount: payload.amount,
+            previousBalance: oldBalance
+          }
+        }
+      };
+    }
+
+    if (type === 'UPDATE_RATES' && updateShopRates) {
+      const previousRates = store.shop ? (payload.rateType === 'spellar' ? { spellarRates: store.shop.spellarRates } : { chakkiRates: store.shop.chakkiRates }) : {};
+      await updateShopRates(payload.ratesData);
+      return {
+        success: true,
+        reply: `[RATE COMMITTED] Rate updated successfully.`,
+        actionExecuted: {
+          type: 'UPDATE_RATES',
+          title: plannedAction.title,
+          details: plannedAction.details,
+          stateModifications: plannedAction.stateModifications,
+          undoPayload: {
+            previousRates
+          }
+        }
+      };
+    }
+
+    if (type === 'MARK_DONE' && markBoriDone) {
+      await markBoriDone(payload.boriId);
+      return {
+        success: true,
+        reply: `[ORDER COMPLETED] Marked bori for ${payload.customerName} as DONE.`,
+        actionExecuted: {
+          type: 'MARK_DONE',
+          title: plannedAction.title,
+          details: plannedAction.details,
+          stateModifications: plannedAction.stateModifications,
+          undoPayload: {
+            boriId: payload.boriId,
+            customerName: payload.customerName
+          }
+        }
+      };
+    }
+
+    if (type === 'ADD_EXPENSE' && addExpense) {
+      const expRes = await addExpense(payload);
+      return {
+        success: true,
+        reply: `[EXPENSE COMMITTED] Recorded Rs ${payload.amount} (${payload.category}) expense.`,
+        actionExecuted: {
+          type: 'ADD_EXPENSE',
+          title: plannedAction.title,
+          details: plannedAction.details,
+          stateModifications: plannedAction.stateModifications,
+          undoPayload: {
+            expenseId: expRes?.id || `e_${Date.now()}`,
+            amount: payload.amount,
+            category: payload.category
+          }
+        }
+      };
+    }
+
+    if (type === 'ADD_CUSTOMER' && addCustomer) {
+      const created = await addCustomer(payload);
+      return {
+        success: true,
+        reply: `[CUSTOMER COMMITTED] Registered ${created.name}.`,
+        actionExecuted: {
+          type: 'ADD_CUSTOMER',
+          title: plannedAction.title,
+          details: plannedAction.details,
+          stateModifications: plannedAction.stateModifications,
+          undoPayload: null
+        }
+      };
+    }
+
+    return { success: false, reply: 'Action commit function not configured.' };
+  } catch (err) {
+    return { success: false, reply: `Commit error: ${err.message}` };
+  }
+}
+
 export async function undoAIAction(actionExecuted, store) {
   if (!actionExecuted || !actionExecuted.undoPayload) {
     return { success: false, reply: 'Undo information not available for this action.' };
@@ -161,7 +308,7 @@ export async function undoAIAction(actionExecuted, store) {
 }
 
 // -------------------------------------------------------------
-// 3. MAIN NATURAL LANGUAGE COMMAND PROCESSOR
+// 3. MAIN NATURAL LANGUAGE COMMAND PROCESSOR (PURE PLANNER)
 // -------------------------------------------------------------
 export async function processAICommand(userInput, store) {
   const text = userInput.trim().toLowerCase();
@@ -169,6 +316,7 @@ export async function processAICommand(userInput, store) {
   if (!text) {
     return {
       reply: 'Kripya koi command dein (e.g. "Ramesh Kumar 50kg gehun pisai bori jama karo" ya "Sunita Devi se 500 rupaye jama payment record karo").',
+      plannedAction: null,
       actionExecuted: null,
       success: false
     };
@@ -179,16 +327,11 @@ export async function processAICommand(userInput, store) {
     boris = [],
     expenses = [],
     shop = {},
-    addBori,
-    markBoriDone,
-    addCustomer,
-    updateShopRates,
-    addExpense,
     getVillages
   } = store;
 
   // -------------------------------------------------------------
-  // ACTION 1: Bori Entry / Jama (NLP Match: "Ramesh Kumar 50kg gehun pisai bori jama karo")
+  // ACTION 1: Bori Entry / Jama
   // -------------------------------------------------------------
   const isBoriCommand = 
     (text.includes('bori') || text.includes('jama') || text.includes('pisai') || text.includes('pirai') || text.includes('katta')) &&
@@ -199,7 +342,6 @@ export async function processAICommand(userInput, store) {
   if (isBoriCommand && weightMatch) {
     const weight = parseInt(weightMatch[1], 10);
     
-    // Resolve Grain Type
     let grainType = 'Gehun';
     if (text.includes('makka') || text.includes('maize')) grainType = 'Makka';
     else if (text.includes('bajra') || text.includes('millet')) grainType = 'Bajra';
@@ -207,16 +349,13 @@ export async function processAICommand(userInput, store) {
     else if (text.includes('multigrain')) grainType = 'Multigrain';
     else if (text.includes('sarson') || text.includes('mustard') || text.includes('oil')) grainType = 'Sarson';
 
-    // Resolve Output Type
     let outputType = grainType === 'Sarson' ? 'Tel' : 'Atta';
     if (text.includes('dana') || text.includes('daliya')) outputType = 'Dana';
     if (text.includes('mota')) outputType = 'Mota Dana';
     if (text.includes('besan')) outputType = 'Besan';
 
-    // Customer Name Resolution (Fuzzy match customer name from query text)
     let matchingCustomer = customers.find((c) => text.includes(c.name.toLowerCase()));
     if (!matchingCustomer) {
-      // Try matching words in user input against customer names
       const words = userInput.split(/\s+/).filter(w => !['50kg', '40kg', '30kg', '20kg', 'kg', 'kilo', 'gehun', 'bajra', 'makka', 'chana', 'pisai', 'pirai', 'bori', 'jama', 'karo', 'add', 'entry', 'se', 'ka', 'ki'].includes(w.toLowerCase()) && !/^\d+$/.test(w));
       const extractedName = words.slice(0, 2).join(' ');
       
@@ -236,63 +375,56 @@ export async function processAICommand(userInput, store) {
     const isCredit = text.includes('udhar') || text.includes('credit') || text.includes('baki');
     const paymentMode = isCredit ? 'credit' : 'cash';
 
-    if (addBori) {
-      const createdBori = await addBori({
-        mode,
-        type: mode === 'spellar' ? 'pirai' : 'pisai',
-        customerId,
-        customerName,
-        customerPhone,
-        customerVillage,
-        grainType,
-        outputType,
-        inputWeight: weight,
-        kaddaDeducted: grainType === 'Gehun' ? Math.round((weight / 40) * 1.25 * 100) / 100 : 0,
-        outputWeight: weight - (grainType === 'Gehun' ? Math.round((weight / 40) * 1.25 * 100) / 100 : 0),
-        rate,
-        amount,
-        status: 'pending',
-        paymentMode,
-        notes: `AI Agent NLP Order: ${userInput}`
-      });
+    const boriPayload = {
+      mode,
+      type: mode === 'spellar' ? 'pirai' : 'pisai',
+      tx_kind: mode === 'spellar' ? 'pirai' : 'pisai',
+      customerId,
+      customerName,
+      customerPhone,
+      customerVillage,
+      grainType,
+      outputType,
+      inputWeight: weight,
+      kaddaDeducted: grainType === 'Gehun' ? Math.round((weight / 40) * 1.25 * 100) / 100 : 0,
+      outputWeight: weight - (grainType === 'Gehun' ? Math.round((weight / 40) * 1.25 * 100) / 100 : 0),
+      rate,
+      amount,
+      status: 'pending',
+      paymentMode,
+      notes: `AI Agent NLP Order: ${userInput}`
+    };
 
-      const replyText = 
-        `[BORI ENTRY CREATED]\n` +
-        `• Customer: ${createdBori.customerName} (${createdBori.customerVillage || 'Main'})\n` +
-        `• Order: ${weight} kg ${grainType} (${outputType})\n` +
-        `• Milling Charge: Rs ${amount} (@ Rs ${rate}/kg)\n` +
-        `• Payment Status: ${paymentMode.toUpperCase()}\n` +
-        `• Status: PENDING IN QUEUE`;
+    const replyText = 
+      `[PLANNED BORI ENTRY]\n` +
+      `• Customer: ${customerName} (${customerVillage})\n` +
+      `• Order: ${weight} kg ${grainType} (${outputType})\n` +
+      `• Milling Charge: Rs ${amount} (@ Rs ${rate}/kg)\n` +
+      `• Payment Status: ${paymentMode.toUpperCase()}\n` +
+      `Confirm entry using "Pakka Karein" button below.`;
 
-      return {
-        reply: replyText,
-        actionExecuted: {
-          type: 'CREATE_BORI',
-          title: 'Bori Entry Added',
-          details: `Added ${weight}kg ${grainType} for ${createdBori.customerName} (Rs ${amount})`,
-          stateModifications: [
-            { label: 'Customer', value: createdBori.customerName },
-            { label: 'Weight', value: `${weight} kg` },
-            { label: 'Grain', value: grainType },
-            { label: 'Total Amount', value: `Rs ${amount}` },
-            { label: 'Payment Mode', value: paymentMode.toUpperCase() }
-          ],
-          undoPayload: {
-            boriId: createdBori.id,
-            customerId: createdBori.customerId,
-            customerName: createdBori.customerName,
-            inputWeight: weight,
-            amount,
-            paymentMode
-          }
-        },
-        success: true
-      };
-    }
+    return {
+      reply: replyText,
+      plannedAction: {
+        type: 'CREATE_BORI',
+        title: 'Bori Entry Add Karein',
+        details: `Add ${weight}kg ${grainType} for ${customerName} (Rs ${amount})`,
+        payload: boriPayload,
+        stateModifications: [
+          { label: 'Customer', value: customerName },
+          { label: 'Weight', value: `${weight} kg` },
+          { label: 'Grain', value: grainType },
+          { label: 'Total Amount', value: `Rs ${amount}` },
+          { label: 'Payment Mode', value: paymentMode.toUpperCase() }
+        ]
+      },
+      actionExecuted: null,
+      success: true
+    };
   }
 
   // -------------------------------------------------------------
-  // ACTION 2: Payment Collection (NLP Match: "Sunita Devi se 500 rupaye jama payment record karo")
+  // ACTION 2: Payment Collection
   // -------------------------------------------------------------
   if (
     (text.includes('jama') && (text.includes('payment') || text.includes('rupaye') || text.includes('rs') || text.includes('bhugtan') || text.includes('rashi'))) ||
@@ -303,10 +435,11 @@ export async function processAICommand(userInput, store) {
 
     const matchingCustomer = customers.find((c) => text.includes(c.name.toLowerCase()) || text.includes(c.phone));
 
-    if (matchingCustomer && amount > 0 && addBori) {
-      await addBori({
+    if (matchingCustomer && amount > 0) {
+      const paymentPayload = {
         mode: 'chakki',
         type: 'payment',
+        tx_kind: 'payment',
         customerId: matchingCustomer.id,
         customerName: matchingCustomer.name,
         customerPhone: matchingCustomer.phone || '',
@@ -320,43 +453,40 @@ export async function processAICommand(userInput, store) {
         status: 'done',
         paymentMode: text.includes('upi') || text.includes('online') ? 'upi' : 'cash',
         notes: `AI Agent Payment Collection: ${userInput}`
-      });
+      };
 
       const oldBalance = matchingCustomer.balance || 0;
       const newBalance = Math.max(0, oldBalance - amount);
 
       const replyText = 
-        `[PAYMENT RECORDED]\n` +
+        `[PLANNED PAYMENT]\n` +
         `• Customer: ${matchingCustomer.name}\n` +
-        `• Village: ${matchingCustomer.village || 'Main'}\n` +
         `• Amount Received: Rs ${amount}\n` +
         `• Previous Dues: Rs ${oldBalance}\n` +
-        `• Updated Balance: Rs ${newBalance}`;
+        `• New Balance: Rs ${newBalance}\n` +
+        `Confirm payment using "Pakka Karein" button below.`;
 
       return {
         reply: replyText,
-        actionExecuted: {
+        plannedAction: {
           type: 'RECORD_PAYMENT',
-          title: 'Payment Collection Recorded',
-          details: `Recorded Rs ${amount} payment from ${matchingCustomer.name}`,
+          title: 'Payment Record Karein',
+          details: `Record Rs ${amount} payment from ${matchingCustomer.name}`,
+          payload: paymentPayload,
           stateModifications: [
             { label: 'Customer', value: matchingCustomer.name },
             { label: 'Amount Paid', value: `Rs ${amount}` },
             { label: 'Previous Dues', value: `Rs ${oldBalance}` },
             { label: 'New Balance', value: `Rs ${newBalance}` }
-          ],
-          undoPayload: {
-            customerId: matchingCustomer.id,
-            customerName: matchingCustomer.name,
-            amount,
-            previousBalance: oldBalance
-          }
+          ]
         },
+        actionExecuted: null,
         success: true
       };
     } else if (!matchingCustomer) {
       return {
-        reply: `Customer naam samajh me nahi aaya. Kripya grahak ka saaf naam likhein (e.g. "Sunita Devi se 500 rupaye jama payment record karo").`,
+        reply: `Customer naam samajh me nahi aaya. Kripya grahak ka saaf naam likhein.`,
+        plannedAction: null,
         actionExecuted: null,
         success: false
       };
@@ -364,7 +494,7 @@ export async function processAICommand(userInput, store) {
   }
 
   // -------------------------------------------------------------
-  // ACTION 3: Daily Summary & Hisab (NLP Match: "Aaj ki kul kamai aur pisai batao")
+  // ACTION 3: Daily Summary & Hisab (QUERY ONLY - NO MUTATION)
   // -------------------------------------------------------------
   if (
     text.includes('summary') || 
@@ -399,25 +529,14 @@ export async function processAICommand(userInput, store) {
 
     return {
       reply: replyText,
-      actionExecuted: {
-        type: 'BUSINESS_SUMMARY',
-        title: 'Daily Business Summary',
-        details: `Calculated metrics: ${totalWeight}kg milled, Rs ${totalIncome} gross revenue`,
-        stateModifications: [
-          { label: 'Milling Volume', value: `${totalWeight} kg` },
-          { label: 'Gross Revenue', value: `Rs ${totalIncome}` },
-          { label: 'Expenses', value: `Rs ${todayExpenses}` },
-          { label: 'Net Profit', value: `Rs ${netProfit}` },
-          { label: 'Pending Boris', value: `${pendingBoris.length}` }
-        ],
-        undoPayload: null
-      },
+      plannedAction: null,
+      actionExecuted: null,
       success: true
     };
   }
 
   // -------------------------------------------------------------
-  // ACTION 4: Village Debt Filter (NLP Match: "Rampur ke sabhi udhar grahak batao")
+  // ACTION 4: Village Debt Filter (QUERY ONLY - NO MUTATION)
   // -------------------------------------------------------------
   if (
     text.includes('udhar grahak') || 
@@ -436,11 +555,9 @@ export async function processAICommand(userInput, store) {
     }
 
     let targetCustomers = [...customers].filter(c => c.balance > 0);
-
     if (matchedVillage) {
       targetCustomers = targetCustomers.filter(c => (c.village || '').toLowerCase() === matchedVillage.toLowerCase());
     }
-
     targetCustomers.sort((a, b) => b.balance - a.balance);
 
     const totalVillageDues = targetCustomers.reduce((acc, c) => acc + c.balance, 0);
@@ -449,17 +566,8 @@ export async function processAICommand(userInput, store) {
       const locationLabel = matchedVillage ? matchedVillage : 'All Villages';
       return {
         reply: `[VILLAGE DEBT FILTER]\nNo debtors found in ${locationLabel}. All customer accounts are clear!`,
-        actionExecuted: {
-          type: 'VILLAGE_DEBT_FILTER',
-          title: 'Village Debt Analysis',
-          details: `0 debtors found in ${locationLabel}`,
-          stateModifications: [
-            { label: 'Location', value: locationLabel },
-            { label: 'Debtors Count', value: '0' },
-            { label: 'Total Dues', value: 'Rs 0' }
-          ],
-          undoPayload: null
-        },
+        plannedAction: null,
+        actionExecuted: null,
         success: true
       };
     }
@@ -478,69 +586,44 @@ export async function processAICommand(userInput, store) {
 
     return {
       reply: replyText,
-      actionExecuted: {
-        type: 'VILLAGE_DEBT_FILTER',
-        title: 'Village Debt Filter',
-        details: `Filtered ${targetCustomers.length} debtors in ${locationLabel} (Total: Rs ${totalVillageDues})`,
-        stateModifications: [
-          { label: 'Target Location', value: locationLabel },
-          { label: 'Total Debtors', value: `${targetCustomers.length}` },
-          { label: 'Total Dues', value: `Rs ${totalVillageDues}` }
-        ],
-        undoPayload: null
-      },
+      plannedAction: null,
+      actionExecuted: null,
       success: true
     };
   }
 
   // -------------------------------------------------------------
-  // ACTION 5: Update Grinding Rate (NLP Match: "Gehun pisai rate 5 rupaye set karo")
+  // ACTION 5: Update Grinding Rate
   // -------------------------------------------------------------
   if (text.includes('rate') || text.includes('bhav') || text.includes('dam')) {
     const numberMatch = text.match(/(\d+(\.\d+)?)/);
-    if (numberMatch && updateShopRates) {
+    if (numberMatch) {
       const newRate = parseFloat(numberMatch[1]);
-      const previousChakkiRates = shop.chakkiRates || {};
-      const previousSpellarRates = shop.spellarRates || {};
+      const isSpellar = text.includes('pirai') || text.includes('spellar') || text.includes('oil') || text.includes('sarson');
 
-      if (text.includes('pirai') || text.includes('spellar') || text.includes('oil') || text.includes('sarson')) {
-        await updateShopRates({ spellarRates: { pirai: newRate } });
-        return {
-          reply: `[RATE UPDATED] Spellar Oil Pressing Rate set to Rs ${newRate}/kg.`,
-          actionExecuted: {
-            type: 'UPDATE_RATES',
-            title: 'Shop Rate Updated',
-            details: `Updated Spellar Pirai rate to Rs ${newRate}/kg`,
-            stateModifications: [
-              { label: 'Rate Type', value: 'Spellar Pirai' },
-              { label: 'New Rate', value: `Rs ${newRate}/kg` }
-            ],
-            undoPayload: {
-              previousRates: { spellarRates: previousSpellarRates }
-            }
-          },
-          success: true
-        };
-      } else {
-        const updatedGrainRates = { ...(previousChakkiRates.grainRates || {}), gehun: newRate };
-        await updateShopRates({ chakkiRates: { pisai: newRate, grainRates: updatedGrainRates } });
-        return {
-          reply: `[RATE UPDATED] Flour Grinding (Gehun Pisai) Rate set to Rs ${newRate}/kg.`,
-          actionExecuted: {
-            type: 'UPDATE_RATES',
-            title: 'Shop Rate Updated',
-            details: `Updated Chakki Pisai rate to Rs ${newRate}/kg`,
-            stateModifications: [
-              { label: 'Rate Type', value: 'Chakki Gehun Pisai' },
-              { label: 'New Rate', value: `Rs ${newRate}/kg` }
-            ],
-            undoPayload: {
-              previousRates: { chakkiRates: previousChakkiRates }
-            }
-          },
-          success: true
-        };
-      }
+      const ratePayload = isSpellar
+        ? { rateType: 'spellar', ratesData: { spellarRates: { pirai: newRate } } }
+        : { rateType: 'chakki', ratesData: { chakkiRates: { pisai: newRate, grainRates: { ...(shop.chakkiRates?.grainRates || {}), gehun: newRate } } } };
+
+      const replyText = isSpellar
+        ? `[PLANNED RATE UPDATE] Spellar Pirai Rate set to Rs ${newRate}/kg.\nConfirm using "Pakka Karein".`
+        : `[PLANNED RATE UPDATE] Chakki Gehun Pisai Rate set to Rs ${newRate}/kg.\nConfirm using "Pakka Karein".`;
+
+      return {
+        reply: replyText,
+        plannedAction: {
+          type: 'UPDATE_RATES',
+          title: 'Shop Rate Update Karein',
+          details: `Set ${isSpellar ? 'Spellar' : 'Chakki'} rate to Rs ${newRate}/kg`,
+          payload: ratePayload,
+          stateModifications: [
+            { label: 'Rate Type', value: isSpellar ? 'Spellar Pirai' : 'Chakki Gehun Pisai' },
+            { label: 'New Rate', value: `Rs ${newRate}/kg` }
+          ]
+        },
+        actionExecuted: null,
+        success: true
+      };
     }
   }
 
@@ -552,6 +635,7 @@ export async function processAICommand(userInput, store) {
     if (pendingBoris.length === 0) {
       return {
         reply: '[QUEUE EMPTY] No pending boris in queue to mark as completed.',
+        plannedAction: null,
         actionExecuted: null,
         success: false
       };
@@ -562,24 +646,24 @@ export async function processAICommand(userInput, store) {
       targetBori = pendingBoris[0];
     }
 
-    if (markBoriDone && targetBori) {
-      await markBoriDone(targetBori.id);
+    if (targetBori) {
       return {
-        reply: `[ORDER COMPLETED] Marked bori for ${targetBori.customerName} (${targetBori.inputWeight}kg ${targetBori.grainType || 'Grain'}) as COMPLETED. SMS notification triggered.`,
-        actionExecuted: {
+        reply: `[PLANNED ORDER COMPLETE]\nMark bori for ${targetBori.customerName} (${targetBori.inputWeight}kg ${targetBori.grainType || 'Grain'}) as COMPLETED.\nConfirm using "Pakka Karein".`,
+        plannedAction: {
           type: 'MARK_DONE',
-          title: 'Bori Marked Completed',
-          details: `Marked bori ${targetBori.id} for ${targetBori.customerName} as done`,
+          title: 'Bori Complete Mark Karein',
+          details: `Mark ${targetBori.customerName} bori as DONE`,
+          payload: {
+            boriId: targetBori.id,
+            customerName: targetBori.customerName
+          },
           stateModifications: [
             { label: 'Customer', value: targetBori.customerName },
             { label: 'Weight', value: `${targetBori.inputWeight} kg` },
             { label: 'New Status', value: 'DONE' }
-          ],
-          undoPayload: {
-            boriId: targetBori.id,
-            customerName: targetBori.customerName
-          }
+          ]
         },
+        actionExecuted: null,
         success: true
       };
     }
@@ -597,29 +681,24 @@ export async function processAICommand(userInput, store) {
     else if (text.includes('diesel') || text.includes('fuel')) category = 'Diesel';
     else if (text.includes('chai') || text.includes('tea') || text.includes('nashta')) category = 'Miscellaneous';
 
-    if (amount > 0 && addExpense) {
-      const expRes = await addExpense({
-        category,
-        amount,
-        description: `AI Agent Expense Log: ${userInput}`
-      });
-
+    if (amount > 0) {
       return {
-        reply: `[EXPENSE LOGGED] Recorded Rs ${amount} (${category}) shop expense.`,
-        actionExecuted: {
+        reply: `[PLANNED EXPENSE]\nRecord Rs ${amount} (${category}) shop expense.\nConfirm using "Pakka Karein".`,
+        plannedAction: {
           type: 'ADD_EXPENSE',
-          title: 'Expense Entry Added',
-          details: `Logged Rs ${amount} expense under ${category}`,
+          title: 'Kharcha Add Karein',
+          details: `Log Rs ${amount} expense under ${category}`,
+          payload: {
+            category,
+            amount,
+            description: `AI Agent Expense Log: ${userInput}`
+          },
           stateModifications: [
             { label: 'Category', value: category },
             { label: 'Amount', value: `Rs ${amount}` }
-          ],
-          undoPayload: {
-            expenseId: expRes?.id || `e_${Date.now()}`,
-            amount,
-            category
-          }
+          ]
         },
+        actionExecuted: null,
         success: true
       };
     }
@@ -635,30 +714,27 @@ export async function processAICommand(userInput, store) {
     const words = userInput.split(/\s+/).filter(w => !['add', 'grahak', 'customer', 'nayi', 'naya', 'karo', 'karein', 'se', 'ka', 'ki', 'jodein'].includes(w.toLowerCase()) && !/^\d+$/.test(w));
     const name = words.slice(0, 2).join(' ') || 'Naya Grahak';
 
-    if (addCustomer) {
-      const created = await addCustomer({
-        name,
-        phone,
-        village: 'Main Village',
-        balance: 0
-      });
-
-      return {
-        reply: `[CUSTOMER REGISTERED]\n• Name: ${created.name}\n• Phone: ${created.phone || 'Not specified'}\n• Balance: Rs 0`,
-        actionExecuted: {
-          type: 'ADD_CUSTOMER',
-          title: 'Customer Registered',
-          details: `Registered customer ${created.name}`,
-          stateModifications: [
-            { label: 'Name', value: created.name },
-            { label: 'Phone', value: created.phone || 'N/A' },
-            { label: 'Balance', value: 'Rs 0' }
-          ],
-          undoPayload: null
+    return {
+      reply: `[PLANNED CUSTOMER]\nRegister customer ${name} (${phone || 'No phone'}).\nConfirm using "Pakka Karein".`,
+      plannedAction: {
+        type: 'ADD_CUSTOMER',
+        title: 'Grahak Register Karein',
+        details: `Register ${name}`,
+        payload: {
+          name,
+          phone,
+          village: 'Main Village',
+          balance: 0
         },
-        success: true
-      };
-    }
+        stateModifications: [
+          { label: 'Name', value: name },
+          { label: 'Phone', value: phone || 'N/A' },
+          { label: 'Balance', value: 'Rs 0' }
+        ]
+      },
+      actionExecuted: null,
+      success: true
+    };
   }
 
   // Fallback Command Helper
@@ -671,13 +747,8 @@ export async function processAICommand(userInput, store) {
       `3. "Aaj ki kul kamai aur pisai batao"\n` +
       `4. "Rampur ke sabhi udhar grahak batao"\n` +
       `5. "Gehun pisai rate 5 rupaye set karo"`,
-    actionExecuted: {
-      type: 'HELP_PROMPT',
-      title: 'Suggested Commands',
-      details: 'Showed quick command options',
-      stateModifications: [],
-      undoPayload: null
-    },
+    plannedAction: null,
+    actionExecuted: null,
     success: true
   };
 }

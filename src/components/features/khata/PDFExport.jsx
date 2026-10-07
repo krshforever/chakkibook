@@ -1,13 +1,15 @@
-import React from 'react';
-import { Download } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import React, { useState } from 'react';
+import { Download, Loader2 } from 'lucide-react';
 import Button from '../../ui/Button';
 
 export default function PDFExport({ customer, transactions = [], shopName = 'Vanshu Atta Chakki' }) {
+  const [loading, setLoading] = useState(false);
   if (!customer) return null;
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     try {
+      setLoading(true);
+      const { jsPDF } = await import('jspdf');
       const doc = new jsPDF();
 
       // Title & Header
@@ -43,7 +45,7 @@ export default function PDFExport({ customer, transactions = [], shopName = 'Van
           y = 20;
         }
         const dateStr = tx.dropOffDate ? new Date(tx.dropOffDate).toLocaleDateString('en-IN') : 'Today';
-        const typeStr = tx.grainType ? `${tx.grainType} (${tx.inputWeight}kg)` : 'Jama Payment';
+        const typeStr = (tx.tx_kind === 'payment' || tx.type === 'payment' || !tx.grainType) ? 'Jama Payment' : `${tx.grainType} (${tx.inputWeight}kg)`;
         const amountStr = `Rs. ${tx.amount}`;
         const statusStr = tx.paymentMode === 'credit' ? 'Udhar' : 'Nokad';
 
@@ -64,6 +66,8 @@ export default function PDFExport({ customer, transactions = [], shopName = 'Van
       doc.save(`Khata_${customer.name.replace(/\s+/g, '_')}.pdf`);
     } catch (e) {
       console.warn('PDF export error:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,10 +75,11 @@ export default function PDFExport({ customer, transactions = [], shopName = 'Van
     <Button
       variant="quiet"
       size="sm"
-      icon={Download}
+      icon={loading ? Loader2 : Download}
+      disabled={loading}
       onClick={generatePDF}
     >
-      Download PDF Hisab
+      {loading ? 'Generating PDF...' : 'Download PDF Hisab'}
     </Button>
   );
 }

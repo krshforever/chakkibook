@@ -114,30 +114,6 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
-  const handleQuickDemoLogin = async () => {
-    setPhone("9876543210");
-    setPassword("123456");
-    setLoading(true);
-    setError("");
-
-    const demoUser = {
-      uid: "user_9876543210",
-      email: "9876543210@chakkibook.local",
-      isFallback: true
-    };
-
-    try {
-      await loginUser("9876543210", "123456");
-    } catch (e) {
-      // Ignore auth provider exceptions for demo mode
-    }
-
-    if (onLoginSuccess) {
-      onLoginSuccess(demoUser, "shop_default_1", "owner");
-    }
-    setLoading(false);
-  };
-
   return (
     <div 
       style={{
@@ -641,35 +617,7 @@ export default function Login({ onLoginSuccess }) {
           <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
         </div>
 
-        {/* 1-Tap Quick Demo Login Button */}
-        <div>
-          <button
-            type="button"
-            className="cb-demo-btn"
-            onClick={handleQuickDemoLogin}
-            disabled={loading}
-            style={{
-              width: "100%",
-              minHeight: "46px",
-              background: "#fffbeb",
-              border: "1.5px solid #fde68a",
-              color: "#92400e",
-              borderRadius: "0.75rem",
-              padding: "10px 16px",
-              fontSize: "0.86rem",
-              fontWeight: 700,
-              cursor: loading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              boxShadow: "0 1px 3px rgba(245, 158, 11, 0.08)"
-            }}
-          >
-            <Zap size={16} strokeWidth={2.5} style={{ color: "#d97706", fill: "#d97706" }} />
-            <span>{t('login.quickDemo')}</span>
-          </button>
-        </div>
+
 
         {/* Trust & Security Guarantee Badge */}
         <div style={{

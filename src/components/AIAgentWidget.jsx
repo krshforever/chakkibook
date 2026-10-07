@@ -20,8 +20,9 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import { processAICommand, generatePredictiveInsights, undoAIAction } from '../services/aiAgent';
+import { processAICommand, commitAction, generatePredictiveInsights, undoAIAction } from '../services/aiAgent';
 import { useTranslation } from '../utils/translations';
+import Toast from './ui/Toast';
 
 export default function AIAgentWidget({ forceOpen, onCloseTab }) {
   const { t } = useTranslation();
@@ -31,9 +32,9 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showInsights, setShowInsights] = useState(true);
 
-  const store = useStore((state) => state);
-
-  useEffect(() => {
+  const customers = useStore((state) => state.customers || []);
+  const boris = useStore((state) => state.boris || []);
+  const predictiveInsights = generatePredictiveInsights({ customers, boris });
     if (typeof forceOpen === 'boolean') {
       setIsOpen(forceOpen);
     }
@@ -77,7 +78,14 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
   // Generate predictive insights from store
   const predictiveInsights = generatePredictiveInsights(store);
 
-  // Handle Voice Speech Recognition Simulation & Web API
+  const [toastMessage, setToastMessage] = useState('');
+  const inputRef = useRef(null);
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+  };
+
+  // Handle Voice Speech Recognition (no simulation, no auto-execution)
   const handleMicToggle = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -87,22 +95,8 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
     }
 
     if (!SpeechRecognition) {
-      // Simulation mode if Web Speech API not present
-      setIsListening(true);
-      const simulatedPhrases = [
-        "Ramesh Kumar 50kg gehun pisai bori jama karo",
-        "Sunita Devi se 500 rupaye jama payment record karo",
-        "Aaj ki kul kamai aur pisai batao",
-        "Rampur ke sabhi udhar grahak batao",
-        "Gehun pisai rate 5 rupaye set karo"
-      ];
-      const randomPhrase = simulatedPhrases[Math.floor(Math.random() * simulatedPhrases.length)];
-
-      setTimeout(() => {
-        setInputText(randomPhrase);
-        setIsListening(false);
-        handleSendMessage(randomPhrase);
-      }, 2200);
+      showToast(t('voice.unsupported', 'Is device par voice input available nahi hai — command likhiye.'));
+      inputRef.current?.focus();
       return;
     }
 
@@ -120,11 +114,13 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
         const transcript = event.results[0][0].transcript;
         setInputText(transcript);
         setIsListening(false);
-        handleSendMessage(transcript);
+        inputRef.current?.focus();
       };
 
       recognition.onerror = () => {
         setIsListening(false);
+        showToast(t('voice.error', 'Voice pehchan nahi ho payi — command likhiye.'));
+        inputRef.current?.focus();
       };
 
       recognition.onend = () => {
@@ -134,6 +130,8 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
       recognition.start();
     } catch (e) {
       setIsListening(false);
+      showToast(t('voice.unsupported', 'Is device par voice input available nahi hai — command likhiye.'));
+      inputRef.current?.focus();
     }
   };
 
@@ -153,14 +151,15 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
     setIsProcessing(true);
 
     try {
-      const result = await processAICommand(textToSend, store);
+      const result = await processAICommand(textToSend, useStore.getState());
 
       const aiMsg = {
         id: `ai_${Date.now()}`,
         sender: 'ai',
         text: result.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        action: result.actionExecuted
+        plannedAction: result.plannedAction || null,
+        action: null
       };
 
       setMessages((prev) => [...prev, aiMsg]);
@@ -179,10 +178,72 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
     }
   };
 
+  const handleCommitAction = async (msgId, plannedAction) => {
+    if (!plannedAction) return;
+
+    setIsProcessing(true);
+    try {
+      const commitRes = await commitAction(plannedAction, useStore.getState());
+      if (commitRes.success) {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id === msgId) {
+              return {
+                ...m,
+                plannedAction: null,
+                action: commitRes.actionExecuted
+              };
+            }
+            return m;
+          })
+        );
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `ai_confirm_${Date.now()}`,
+            sender: 'ai',
+            text: commitRes.reply,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+      } else {
+        showToast(commitRes.reply || 'Action execute nahi ho paya.');
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRejectAction = (msgId) => {
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id === msgId) {
+          return {
+            ...m,
+            plannedAction: null,
+            actionStatus: 'rejected'
+          };
+        }
+        return m;
+      })
+    );
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `ai_reject_${Date.now()}`,
+        sender: 'ai',
+        text: 'Action radd (cancel) kar diya gaya hai.',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ]);
+  };
+
   const handleUndo = async (msgId, action) => {
     if (!action || action.undone) return;
 
-    const undoRes = await undoAIAction(action, store);
+    const undoRes = await undoAIAction(action, useStore.getState());
 
     // Update message state to show action undone
     setMessages((prev) =>
@@ -518,6 +579,61 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
                 >
                   {msg.text}
 
+                  {/* Two-Phase Pending Action Confirmation Card */}
+                  {msg.plannedAction && (
+                    <div
+                      style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        background: 'rgba(234, 88, 12, 0.15)',
+                        border: '1px solid rgba(234, 88, 12, 0.4)',
+                        borderRadius: '0.75rem',
+                        fontSize: '0.78rem',
+                        color: '#fb923c'
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, letterSpacing: '0.02em', marginBottom: '4px' }}>
+                        ⚠️ Action Confirmation Required: {msg.plannedAction.title}
+                      </div>
+                      <div style={{ color: '#fdba74', marginBottom: '10px' }}>{msg.plannedAction.details}</div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCommitAction(msg.id, msg.plannedAction)}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            borderRadius: '0.5rem',
+                            background: 'linear-gradient(180deg, #ea580c, #c2410c)',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontWeight: 800,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Pakka Karein
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRejectAction(msg.id)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '0.5rem',
+                            background: 'rgba(255,255,255,0.1)',
+                            color: '#cbd5e1',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            fontWeight: 700,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Autonomous Action Execution Confirmation Card */}
                   {action && (
                     <div
@@ -693,6 +809,7 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
 
           {/* Text Input */}
           <input
+            ref={inputRef}
             type="text"
             placeholder={isListening ? t('aiAgentWidget.listeningVoice') : t('aiAgentWidget.inputPlaceholder')}
             value={inputText}
@@ -737,6 +854,13 @@ export default function AIAgentWidget({ forceOpen, onCloseTab }) {
           </button>
         </div>
       </div>
+
+      <Toast
+        message={toastMessage}
+        isOpen={!!toastMessage}
+        onClose={() => setToastMessage('')}
+        type="info"
+      />
     </div>
   );
 }

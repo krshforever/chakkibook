@@ -32,11 +32,11 @@ npm install
 # Run dev server
 npm run dev
 
-# Bundle production build
-node ./node_modules/esbuild/bin/esbuild src/main.jsx --bundle --format=esm --outfile=dist/assets/index-DyW3pNuF.js --loader:.jsx=jsx --loader:.js=jsx --define:process.env.NODE_ENV='"production"' --define:import.meta.env='{}' && cp dist/assets/index-DyW3pNuF.css dist/assets/index-DClZrqE3.css
+# Bundle production build (Deterministic Output: dist/assets/app.js & dist/assets/app.css)
+npm run build
 
 # Serve static build
-npx http-server dist -p 8080
+node server.js
 ```
 
 ---

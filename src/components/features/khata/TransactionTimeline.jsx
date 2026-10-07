@@ -14,8 +14,7 @@ export default function TransactionTimeline({ transactions = [] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
       {transactions.map((tx) => {
-        const isCredit = tx.paymentMode === 'credit';
-        const isPayment = tx.type === 'payment';
+        const isPayment = tx.tx_kind === 'payment';
 
         return (
           <div

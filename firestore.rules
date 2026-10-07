@@ -1,36 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    // Path: /shops/{shopId}/
-    // Collections:
-    //   - boris: Milling entries (inputWeight, outputWeight, amount, customerName, etc.)
-    //   - customers: Customer ledger accounts (name, phone, village, balance)
-    //   - inventory: Stock items (name, stock, category, unit, lowAlert)
-    //   - members: Authorized shop members and operators (role, phone, name)
-    //   - config: Shop rates and SMS settings
-    // ===============================================================
-
-    // Helper Functions
-    function isAuthenticated() {
-      return request.auth != null;
+    match /shops/{shopId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.token.shopId == shopId;
     }
-
-    // Default Deny
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Multi-tenant Shop Hierarchy
-    match /shops/{shopId} {
-      allow read, write: if isAuthenticated();
-
-      match /{allChildren=**} {
-        allow read, write: if isAuthenticated();
-      }
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

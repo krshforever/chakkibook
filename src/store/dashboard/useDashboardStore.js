@@ -11,7 +11,38 @@ const todayISO = now.toISOString();
 const yesterdayISO = new Date(Date.now() - 86400000 * 1).toISOString();
 const threeDaysAgoISO = new Date(Date.now() - 86400000 * 3).toISOString();
 
-const initialBoris = [
+export function migrateLedgerV2(borisList = [], customersList = []) {
+  return borisList.map((b) => {
+    const tx_kind = (b.grainType?.toLowerCase() === 'jama payment' || b.type === 'payment' || b.tx_kind === 'payment')
+      ? 'payment'
+      : (b.type === 'pirai' ? 'pirai' : (b.type === 'khari_sale' ? 'khari' : 'pisai'));
+
+    let customerId = b.customerId;
+    let needsReview = Boolean(b.needsReview);
+
+    if (!customerId || customerId === 'c_temp') {
+      const bName = (b.customerName || '').trim().toLowerCase();
+      const hits = customersList.filter(c => (c.name || '').trim().toLowerCase() === bName);
+      if (hits.length === 1) {
+        customerId = hits[0].id;
+        needsReview = false;
+      } else {
+        needsReview = true;
+      }
+    } else {
+      needsReview = false;
+    }
+
+    return {
+      ...b,
+      tx_kind,
+      customerId,
+      needsReview
+    };
+  });
+}
+
+const initialBoris = migrateLedgerV2([
   {
     id: 'b_pend_1',
     shopId: 'shop_default_1',
@@ -21,6 +52,7 @@ const initialBoris = [
     customerVillage: 'Rampur',
     mode: 'chakki',
     type: 'pisai',
+    tx_kind: 'pisai',
     status: 'pending',
     dropOffDate: threeDaysAgoISO,
     doneDate: null,
@@ -47,6 +79,7 @@ const initialBoris = [
     customerVillage: 'Rampur',
     mode: 'chakki',
     type: 'pisai',
+    tx_kind: 'pisai',
     status: 'pending',
     dropOffDate: todayISO,
     doneDate: null,
@@ -73,6 +106,7 @@ const initialBoris = [
     customerVillage: 'Shiv Nagar',
     mode: 'chakki',
     type: 'pisai',
+    tx_kind: 'pisai',
     status: 'pending',
     dropOffDate: yesterdayISO,
     doneDate: null,
@@ -99,6 +133,7 @@ const initialBoris = [
     customerVillage: 'Shiv Nagar',
     mode: 'chakki',
     type: 'pisai',
+    tx_kind: 'pisai',
     status: 'done',
     dropOffDate: todayISO,
     doneDate: todayISO,
@@ -125,6 +160,7 @@ const initialBoris = [
     customerVillage: 'Kisan Basti',
     mode: 'spellar',
     type: 'pirai',
+    tx_kind: 'pirai',
     status: 'done',
     dropOffDate: todayISO,
     doneDate: todayISO,
@@ -142,7 +178,7 @@ const initialBoris = [
     notes: '80kg yellow sarson -> 26L pure oil',
     createdAt: todayISO
   }
-];
+]);
 
 export const useDashboardStore = create((set, get) => ({
   boris: initialBoris,
@@ -170,6 +206,8 @@ export const useDashboardStore = create((set, get) => ({
     const id = `b_${Date.now()}`;
     const createdDate = new Date().toISOString();
 
+    const tx_kind = boriData.tx_kind || ((boriData.grainType?.toLowerCase() === 'jama payment' || boriData.type === 'payment') ? 'payment' : (boriData.type === 'pirai' ? 'pirai' : 'pisai'));
+
     const newBori = {
       id,
       shopId,
@@ -183,6 +221,8 @@ export const useDashboardStore = create((set, get) => ({
       customerVillage: boriData.customerVillage || '',
       grainType: boriData.grainType || 'Gehun',
       outputType: boriData.outputType || 'Atta',
+      tx_kind,
+      needsReview: !boriData.customerId || boriData.customerId === 'c_temp',
       ...boriData
     };
 
@@ -195,6 +235,17 @@ export const useDashboardStore = create((set, get) => ({
       console.warn('Firestore addBori error:', e);
     }
     return newBori;
+  },
+
+  assignCustomerToBori: (boriId, customerId) => {
+    set((state) => ({
+      boris: state.boris.map((b) => {
+        if (b.id === boriId) {
+          return { ...b, customerId, needsReview: false };
+        }
+        return b;
+      })
+    }));
   },
 
   markBoriDone: async (boriId, shopId = 'shop_default_1', shopName = 'Vanshu Atta Chakki') => {
