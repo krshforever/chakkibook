@@ -2,5 +2,28 @@
   "appId": "com.chakkibook.app",
   "appName": "Chakkibook",
   "webDir": "dist",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "backgroundColor": "#F7F3EB",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": false,
+      "splashImmersive": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#F7F3EB",
+      "overlaysWebView": false
+    }
+  },
+  "server": {
+    "androidScheme": "https"
+  }
 }

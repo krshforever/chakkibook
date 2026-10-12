@@ -1,19 +1,25 @@
-import React from 'react';
-import { Wheat, Droplets, Mic } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Wheat, Droplets } from 'lucide-react';
 import { useStore } from '../../store/useStore';
+import { useVoiceStore } from '../../store/voice/useVoiceStore';
 import Avatar from '../ui/Avatar';
 
-export default function AppBar({ onOpenSettings }) {
+/**
+ * Top bar.
+ *
+ * The mic button that used to live here is gone — voice has its own tab, and a
+ * 38px icon in a corner is the opposite of AI-first. In its place is a live
+ * state pip: it tells the operator at a glance whether the co-pilot is
+ * listening, thinking or speaking, without them having to leave the screen
+ * they are on. Tapping it jumps to the voice deck.
+ */
+export default function AppBar({ onOpenSettings, onNavigate }) {
   const activeMode = useStore((state) => state.activeMode || 'chakki');
   const setActiveMode = useStore((state) => state.setActiveMode);
   const shop = useStore((state) => state.shop || {});
-  const toggleAISheet = useStore((state) => state.toggleAISheet);
-  const setVoiceListening = useStore((state) => state.setVoiceListening);
+  const voiceStatus = useVoiceStore((s) => s.status);
 
-  const handleMicClick = () => {
-    setVoiceListening(true);
-    toggleAISheet();
-  };
+  const voiceLive = voiceStatus !== 'idle' && voiceStatus !== 'error';
 
   return (
     <header
@@ -23,145 +29,76 @@ export default function AppBar({ onOpenSettings }) {
         zIndex: 100,
         backgroundColor: 'hsl(var(--surface))',
         borderBottom: '1px solid hsl(var(--line))',
-        padding: '0 16px',
+        padding: '0 14px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '60px',
-        boxShadow: 'none' /* SHADOW AUDIT */
+        gap: '8px',
+        height: '58px',
+        boxShadow: 'none'
       }}
     >
-      {/* 1. Logo (38px) */}
-      <div
-        style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: '10px',
-          backgroundColor: 'hsl(var(--brand-light, 38 90% 95%))',
-          color: 'hsl(var(--brand-500))',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexShrink: 0
-        }}
-      >
+      <div className="cb-appbar-mark">
         <img
           src="/logo.png"
-          alt="Logo"
-          style={{ width: '38px', height: '38px', borderRadius: '10px', objectFit: 'cover' }}
+          alt=""
+          style={{ width: '100%', height: '100%', borderRadius: 'inherit', objectFit: 'cover' }}
           onError={(e) => { e.target.style.display = 'none'; }}
         />
-        <Wheat size={20} />
+        <Wheat size={19} strokeWidth={2} />
       </div>
 
-      {/* 2. Stack (mill name 15/700 + "Atta & Grain Mill" 10.5 muted) */}
-      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, marginLeft: '10px', marginRight: '10px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, marginLeft: '2px' }}>
         <span
           style={{
             fontSize: '15px',
-            fontWeight: '700',
+            fontWeight: '800',
             color: 'hsl(var(--ink))',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            lineHeight: 1.2
+            lineHeight: 1.2,
+            letterSpacing: '-0.01em'
           }}
         >
           {shop?.name || 'Vanshu Atta Mill'}
         </span>
-        <span style={{ fontSize: '10.5px', color: 'hsl(var(--ink-2))', marginTop: '1px' }}>
-          Atta & Grain Mill
+        <span style={{ fontSize: '10.5px', fontWeight: '600', color: 'hsl(var(--ink-3))', marginTop: '1px' }}>
+          {activeMode === 'chakki' ? 'Atta & Grain Mill' : 'Oil Expeller'}
         </span>
       </div>
 
-      {/* 3. Mode Segmented Control (Chakki | Spellar, icons + 11px labels, pill container) */}
-      <div
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          backgroundColor: 'hsl(var(--surface-2))',
-          borderRadius: '999px',
-          padding: '3px',
-          gap: '2px',
-          border: '1px solid hsl(var(--line))',
-          flexShrink: 0,
-          marginRight: '8px'
-        }}
-      >
+      {/* Live voice state — colour matches the orb so the two read as one system */}
+      <button
+        type="button"
+        onClick={() => onNavigate && onNavigate('voice')}
+        aria-label={`ChakkiBot ${voiceStatus}`}
+        className={`cb-voice-pip state-${voiceStatus}`}
+      />
+
+      <div className="cb-mode-switch" role="group" aria-label="Mill mode">
         <button
           type="button"
           onClick={() => setActiveMode('chakki')}
-          style={{
-            height: '28px',
-            padding: '0 8px',
-            borderRadius: '999px',
-            border: 'none',
-            backgroundColor: activeMode === 'chakki' ? 'hsl(var(--surface))' : 'transparent',
-            color: activeMode === 'chakki' ? 'hsl(var(--brand-600))' : 'hsl(var(--ink-2))',
-            fontSize: '11px',
-            fontWeight: activeMode === 'chakki' ? '700' : '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
+          aria-pressed={activeMode === 'chakki'}
+          className="cb-mode-btn is-chakki"
+          data-active={activeMode === 'chakki'}
         >
-          <Wheat size={12} />
+          <Wheat size={13} strokeWidth={2.4} />
           <span>Chakki</span>
         </button>
-
         <button
           type="button"
           onClick={() => setActiveMode('spellar')}
-          style={{
-            height: '28px',
-            padding: '0 8px',
-            borderRadius: '999px',
-            border: 'none',
-            backgroundColor: activeMode === 'spellar' ? 'hsl(var(--surface))' : 'transparent',
-            color: activeMode === 'spellar' ? 'hsl(var(--spellar-500))' : 'hsl(var(--ink-2))',
-            fontSize: '11px',
-            fontWeight: activeMode === 'spellar' ? '700' : '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
+          aria-pressed={activeMode === 'spellar'}
+          className="cb-mode-btn is-spellar"
+          data-active={activeMode === 'spellar'}
         >
-          <Droplets size={12} />
+          <Droplets size={13} strokeWidth={2.4} />
           <span>Spellar</span>
         </button>
       </div>
 
-      {/* 4. Mic icon-button (38px) */}
-      <button
-        type="button"
-        onClick={handleMicClick}
-        style={{
-          width: '38px',
-          height: '38px',
-          borderRadius: '50%',
-          backgroundColor: 'hsl(var(--surface-2))',
-          border: '1px solid hsl(var(--line))',
-          color: 'hsl(var(--ink))',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          flexShrink: 0,
-          marginRight: '8px'
-        }}
-        title="Voice AI"
-      >
-        <Mic size={18} />
-      </button>
-
-      {/* 5. Avatar (38px) */}
-      <Avatar
-        name={shop?.ownerName || 'Bhaiya'}
-        size={38}
-        onClick={onOpenSettings}
-      />
+      <Avatar name={shop?.ownerName || 'Bhaiya'} size={36} onClick={onOpenSettings} />
     </header>
   );
 }

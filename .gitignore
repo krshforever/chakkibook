@@ -39,3 +39,11 @@ dist/
 .firebase/
 *service-account*.json
 
+
+# Secrets — the Gemini API key must never be committed (it is bundled into the
+# APK otherwise). Read only as a last resort by server.js.
+.gemini-key
+.gemini-key.*
+
+# Local test build output
+dist-test/

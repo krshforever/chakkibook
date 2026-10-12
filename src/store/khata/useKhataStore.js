@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { 
   addCustomerToFirestore, 
   updateCustomerInFirestore, 
@@ -13,11 +14,13 @@ const initialCustomers = [
   { id: 'c5', name: 'Suresh Sharma', phone: '9823456789', village: 'Shiv Nagar', balance: 0, shopId: 'shop_default_1', notes: 'Hotel owner' }
 ];
 
-export const useKhataStore = create((set, get) => ({
-  customers: initialCustomers,
-  selectedCustomer: null,
-  customerSearch: '',
-  selectedVillageFilter: 'all',
+export const useKhataStore = create(
+  persist(
+    (set, get) => ({
+      customers: initialCustomers,
+      selectedCustomer: null,
+      customerSearch: '',
+      selectedVillageFilter: 'all',
 
   setSelectedCustomer: (customer) => set({ selectedCustomer: customer }),
   clearSelectedCustomer: () => set({ selectedCustomer: null }),
@@ -67,4 +70,16 @@ export const useKhataStore = create((set, get) => ({
       return { customers: updated };
     });
   }
-}));
+    }),
+    {
+      // This is the shop's register. Without persistence every entry made by
+      // voice or by hand is gone the moment the app is backgrounded and killed,
+      // which is exactly how Android behaves on a low-RAM device.
+      name: 'chakkibook_khata',
+      version: 1,
+      // Only the ledger itself. The transient UI bits (selection, search text,
+      // filter) would otherwise be restored as stale state after a restart.
+      partialize: (state) => ({ customers: state.customers })
+    }
+  )
+);

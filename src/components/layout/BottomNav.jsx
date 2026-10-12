@@ -1,22 +1,41 @@
 import React from 'react';
-import { LayoutDashboard, BookOpen, Package, Plus } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Package, Plus, AudioLines } from 'lucide-react';
+
+/**
+ * Bottom navigation.
+ *
+ * Four destinations, voice first. That ordering is the whole "AI-first"
+ * argument in one decision: the tab an operator lands on is the one they can
+ * drive without reading anything. Dashboard / Khata / Stock are the same
+ * places as before, just one step further away.
+ *
+ * Each tab is colour-coded so the active state survives a glance rather than
+ * relying on the label. Touch targets stay at 52px+ with generous hit padding.
+ */
+const TABS = [
+  { id: 'voice', label: 'Bolo', Icon: AudioLines, tone: 'hsl(var(--ai-indigo))' },
+  { id: 'dashboard', label: 'Home', Icon: LayoutDashboard, tone: 'hsl(var(--brand-500))' },
+  { id: 'khata', label: 'Khata', Icon: BookOpen, tone: 'hsl(var(--brand-600))' },
+  { id: 'stock', label: 'Stock', Icon: Package, tone: 'hsl(var(--spellar-500))' }
+];
 
 export default function BottomNav({ activeTab, setActiveTab, onOpenNewEntry }) {
   return (
     <>
-      {/* V7 FAB Floating above nav */}
+      {/* Floating action — new entry by hand, one tap from anywhere */}
       <button
         type="button"
         onClick={onOpenNewEntry}
         className="fab-floating tap-effect"
         title="+ Nayi Bori Entry"
+        aria-label="Nayi bori entry"
       >
-        <Plus size={28} strokeWidth={2.5} />
+        <Plus size={26} strokeWidth={2.5} />
       </button>
 
-      {/* V7 3-Tab Bottom Nav Only */}
       <nav
         className="nav"
+        aria-label="Main navigation"
         style={{
           position: 'fixed',
           bottom: 0,
@@ -29,83 +48,49 @@ export default function BottomNav({ activeTab, setActiveTab, onOpenNewEntry }) {
           borderTop: '1px solid hsl(var(--line))',
           paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
           paddingTop: '0.375rem',
-          boxShadow: '0 -4px 20px rgba(33, 26, 18, 0.05)'
+          boxShadow: '0 -4px 20px rgba(33, 26, 18, 0.06)'
         }}
       >
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(4, 1fr)',
             alignItems: 'center',
-            height: '52px',
-            padding: '0 1rem'
+            height: '54px',
+            padding: '0 0.25rem'
           }}
         >
-          {/* Tab 1: Home */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('dashboard')}
-            className="tap-effect"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'none',
-              border: 'none',
-              color: activeTab === 'dashboard' ? 'hsl(var(--brand-500))' : 'hsl(var(--ink-2))',
-              cursor: 'pointer'
-            }}
-          >
-            <LayoutDashboard size={20} strokeWidth={activeTab === 'dashboard' ? 2.5 : 1.8} />
-            <span style={{ fontSize: '11px', fontWeight: activeTab === 'dashboard' ? '700' : '500', marginTop: '2px' }}>
-              Home
-            </span>
-          </button>
-
-          {/* Tab 2: Khata */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('khata')}
-            className="tap-effect"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'none',
-              border: 'none',
-              color: activeTab === 'khata' ? 'hsl(var(--brand-500))' : 'hsl(var(--ink-2))',
-              cursor: 'pointer'
-            }}
-          >
-            <BookOpen size={20} strokeWidth={activeTab === 'khata' ? 2.5 : 1.8} />
-            <span style={{ fontSize: '11px', fontWeight: activeTab === 'khata' ? '700' : '500', marginTop: '2px' }}>
-              Khata
-            </span>
-          </button>
-
-          {/* Tab 3: Stock */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('stock')}
-            className="tap-effect"
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'none',
-              border: 'none',
-              color: activeTab === 'stock' ? 'hsl(var(--brand-500))' : 'hsl(var(--ink-2))',
-              cursor: 'pointer'
-            }}
-          >
-            <Package size={20} strokeWidth={activeTab === 'stock' ? 2.5 : 1.8} />
-            <span style={{ fontSize: '11px', fontWeight: activeTab === 'stock' ? '700' : '500', marginTop: '2px' }}>
-              Stock
-            </span>
-          </button>
+          {TABS.map(({ id, label, Icon, tone }) => {
+            const active = activeTab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveTab(id)}
+                className="tap-effect"
+                aria-current={active ? 'page' : undefined}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '2px',
+                  background: 'none',
+                  border: 'none',
+                  color: active ? tone : 'hsl(var(--ink-3))',
+                  cursor: 'pointer',
+                  padding: '0.25rem 0.125rem',
+                  minHeight: '50px',
+                  borderRadius: 'var(--radius-sm)'
+                }}
+              >
+                <Icon size={id === 'voice' ? 23 : 20} strokeWidth={active ? 2.5 : 1.8} />
+                <span style={{ fontSize: '10.5px', fontWeight: active ? '800' : '600', letterSpacing: '0.01em' }}>
+                  {label}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
     </>

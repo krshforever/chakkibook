@@ -1,9 +1,10 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { Wheat, AlertTriangle, RotateCcw } from 'lucide-react';
 import AppBar from './components/layout/AppBar';
 import BottomNav from './components/layout/BottomNav';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
-import AISheet from './components/features/ai/AISheet';
+import VoiceScreen from './components/voice/VoiceScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import Modal from './components/ui/Modal';
 import { onAuthChange } from './firebase/auth';
@@ -16,19 +17,18 @@ const Settings = lazy(() => import('./pages/Settings'));
 const NewEntry = lazy(() => import('./pages/NewEntry'));
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'khata' | 'stock'
+  // 'voice' is the landing tab. AI-first means the screen an operator opens
+  // first is the one they can operate without reading.
+  const [activeTab, setActiveTab] = useState('voice');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [authError, setAuthError] = useState(null);
 
-  // Modals & Drawers
   const [isNewEntryOpen, setIsNewEntryOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const currentUser = useStore((state) => state.currentUser);
   const setAuthUser = useStore((state) => state.setAuthUser);
-  const isAISheetOpen = useStore((state) => state.isAISheetOpen);
-  const closeAISheet = useStore((state) => state.closeAISheet);
 
   useEffect(() => {
     let isMounted = true;
@@ -70,85 +70,46 @@ export default function App() {
     setActiveTab('khata');
   };
 
-  const handleClearSelectedCustomer = () => {
-    setSelectedCustomer(null);
-  };
+  const handleClearSelectedCustomer = () => setSelectedCustomer(null);
 
-  // 1. Initializing Splash State
+  // 1. Splash
   if (initializing) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#F7F3EB',
-          color: '#C96A00',
-          fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif"
-        }}
-      >
-        <img
-          src="/logo.png"
-          alt="Logo"
-          style={{ width: '80px', height: '80px', borderRadius: '1rem', marginBottom: '1rem' }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#9C5300' }}>
-          🌾 Chakkibook V2.0 Load Ho Raha Hai...
-        </h2>
+      <div className="cb-splash">
+        <div className="cb-splash-mark">
+          <Wheat size={40} strokeWidth={1.8} />
+        </div>
+        <h2 className="cb-splash-title">Chakkibook V2.0</h2>
+        <p className="cb-splash-sub">Lad ho raha hai...</p>
       </div>
     );
   }
 
-  // 2. Fatal Auth Error Screen (Hindi)
+  // 2. Fatal auth error
   if (authError) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          padding: '24px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#F7F3EB',
-          textAlign: 'center',
-          fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif"
-        }}
-      >
-        <div style={{ fontSize: '3rem', marginBottom: '12px' }}>⚠️</div>
-        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#b91c1c', marginBottom: '8px' }}>
-          Authentication Mein Samasya Aayi Hai
-        </h2>
-        <p style={{ fontSize: '0.9rem', color: '#475569', marginBottom: '20px', maxWidth: '360px', lineHeight: 1.5 }}>
-          Dukaan ledger security ke liye login zaroori hai. Error: {authError}
+      <div className="cb-splash">
+        <div className="cb-splash-mark is-error">
+          <AlertTriangle size={40} strokeWidth={1.8} />
+        </div>
+        <h2 className="cb-splash-title">Login mein dikkat</h2>
+        <p className="cb-splash-sub" style={{ maxWidth: '22rem' }}>
+          Dukaan ka khata surakshit rakhne ke liye login zaroori hai.
+          <br />
+          <span style={{ fontSize: '0.75rem', color: 'hsl(var(--ink-3))' }}>{authError}</span>
         </p>
         <button
           type="button"
+          className="big-btn"
+          style={{ marginTop: '1.25rem', maxWidth: '16rem' }}
           onClick={() => {
             setAuthError(null);
             setInitializing(true);
             window.location.reload();
           }}
-          style={{
-            padding: '12px 24px',
-            borderRadius: '12px',
-            background: 'linear-gradient(180deg, #ea580c, #c2410c)',
-            color: '#fff',
-            border: 'none',
-            fontWeight: 700,
-            fontSize: '0.95rem',
-            cursor: 'pointer',
-            marginBottom: '16px'
-          }}
         >
-          Dobara Try Karein
+          <RotateCcw size={18} /> Dobara koshish karein
         </button>
-        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-          Sahayata ke liye support se sampark karein: <strong>+91 9876543210</strong>
-        </div>
       </div>
     );
   }
@@ -159,12 +120,14 @@ export default function App() {
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
         <div className="app-shell">
-          {/* App Bar (Header with shop name, mode switcher, language, profile avatar) */}
-          <AppBar onOpenSettings={() => setIsSettingsOpen(true)} />
+          <AppBar onOpenSettings={() => setIsSettingsOpen(true)} onNavigate={setActiveTab} />
 
-          {/* Main View Area */}
-          <main style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 0px))' }}>
-            <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'hsl(var(--brand-600))', fontWeight: 600 }}>Loading tab...</div>}>
+          <main style={{ paddingBottom: 'calc(92px + env(safe-area-inset-bottom, 0px))' }}>
+            {activeTab === 'voice' && (
+              <VoiceScreen onNavigate={(tab) => { setIsNewEntryOpen(false); setActiveTab(tab); }} />
+            )}
+
+            <Suspense fallback={<div className="cb-tab-loading">Loading...</div>}>
               {activeTab === 'dashboard' && (
                 <Dashboard
                   setActiveTab={setActiveTab}
@@ -185,14 +148,12 @@ export default function App() {
             </Suspense>
           </main>
 
-          {/* 3-Tab Bottom Navigation + Floating Action Button (FAB) */}
           <BottomNav
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             onOpenNewEntry={() => setIsNewEntryOpen(true)}
           />
 
-          {/* New Entry Modal Sheet */}
           <Modal
             isOpen={isNewEntryOpen}
             onClose={() => setIsNewEntryOpen(false)}
@@ -210,7 +171,6 @@ export default function App() {
             </Suspense>
           </Modal>
 
-          {/* Settings Modal Sheet */}
           <Modal
             isOpen={isSettingsOpen}
             onClose={() => setIsSettingsOpen(false)}
@@ -221,12 +181,6 @@ export default function App() {
               <Settings onClose={() => setIsSettingsOpen(false)} />
             </Suspense>
           </Modal>
-
-          {/* Chakki AI Bottom Sheet Widget */}
-          <AISheet
-            isOpen={isAISheetOpen}
-            onClose={closeAISheet}
-          />
         </div>
       )}
     </ErrorBoundary>

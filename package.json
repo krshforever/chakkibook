@@ -5,7 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node ./node_modules/esbuild/bin/esbuild src/main.jsx --bundle --format=esm --outfile=dist/assets/app.js --loader:.jsx=jsx --loader:.js=jsx --define:process.env.NODE_ENV='\"production\"' --define:import.meta.env='{}' && cp src/index.css dist/assets/app.css",
+    "build": "node scripts/build.mjs",
+    "smoke": "node_modules/.bin/esbuild scripts/smoke.jsx --bundle --platform=node --format=esm --outfile=dist-test/smoke.mjs --loader:.jsx=jsx --loader:.js=jsx --define:process.env.NODE_ENV='\"production\"' --define:import.meta.env='{}' --log-level=error --banner:js=\"import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);\" && node dist-test/smoke.mjs",
+    "serve": "node server.js",
+    "test": "npm run smoke",
+    "prebuild": "npm run smoke",
     "preview": "vite preview",
     "mcp:firebase": "firebase-mcp-server"
   },

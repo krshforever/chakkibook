@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { 
-  addBoriToFirestore, 
-  updateBoriInFirestore, 
-  subscribeToBoris 
+import { persist } from 'zustand/middleware';
+import {
+  addBoriToFirestore,
+  updateBoriInFirestore,
+  subscribeToBoris
 } from '../../firebase/firestore';
 import { sendBoriSMS } from '../../services/sms';
 
@@ -180,15 +181,17 @@ const initialBoris = migrateLedgerV2([
   }
 ]);
 
-export const useDashboardStore = create((set, get) => ({
-  boris: initialBoris,
-  selectedVillage: 'all',
-  dateFilter: 'aaj', // 'aaj' | 'kal' | 'hafta' | 'mahina'
-  searchQuery: '',
-  aiInsights: [
-    { id: '1', title: 'Subah Peak Window', desc: '10:00 AM se 1:00 PM tak gehun pisai volume 40% high rehta hai.' },
-    { id: '2', title: 'Udhar Warning', desc: 'Rampur village se 2 grahako ka Total ₹2,130 udhar 7 din se baki hai.' }
-  ],
+export const useDashboardStore = create(
+  persist(
+    (set, get) => ({
+      boris: initialBoris,
+      selectedVillage: 'all',
+      dateFilter: 'aaj', // 'aaj' | 'kal' | 'hafta' | 'mahina'
+      searchQuery: '',
+      aiInsights: [
+        { id: '1', title: 'Subah Peak Window', desc: '10:00 AM se 1:00 PM tak gehun pisai volume 40% high rehta hai.' },
+        { id: '2', title: 'Udhar Warning', desc: 'Rampur village se 2 grahako ka Total ₹2,130 udhar 7 din se baki hai.' }
+      ],
 
   setSelectedVillage: (village) => set({ selectedVillage: village }),
   setDateFilter: (filter) => set({ dateFilter: filter }),
@@ -297,4 +300,21 @@ export const useDashboardStore = create((set, get) => ({
       }
     }
   }
-}));
+    }),
+    {
+      // The boris ARE the shop's day. Losing them to a backgrounded app is
+      // losing the till. Merged (not replaced) so a schema change does not
+      // wipe the ledger on upgrade.
+      name: 'chakkibook_boris',
+      version: 1,
+      partialize: (state) => ({ boris: state.boris }),
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted || {}),
+        boris: Array.isArray(persisted && persisted.boris) && persisted.boris.length
+          ? persisted.boris
+          : current.boris
+      })
+    }
+  )
+);

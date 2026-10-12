@@ -12,10 +12,21 @@ export { useKhataStore } from './khata/useKhataStore';
 export { useStockStore } from './stock/useStockStore';
 export { useAIStore } from './ai/useAIStore';
 
-// Unified Store Facade wrapped with Zustand persist middleware per T6
-export const useStore = create(
-  persist(
-    (set, get) => ({
+/**
+ * Unified store facade.
+ *
+ * NOTE: the `persist` middleware that used to wrap this was removed. It
+ * delegated via getters (`get customers() { return useKhataStore.getState()... }`)
+ * while `partialize` asked it to store `customers`/`boris`/`shop` — so it read
+ * actions and plain objects, serialised almost nothing, and wrote a single
+ * `chakkibook_store_v2` key that was never populated. It gave the appearance of
+ * persistence while the ledger was in fact memory-only.
+ *
+ * Persistence now lives on the slice stores that actually own the data, with
+ * their own storage keys and a `merge` that will not wipe the ledger on a
+ * schema change.
+ */
+export const useStore = create((set, get) => ({
       schemaVersion: 2,
 
       // Settings & Multi-Mill Location Slice
@@ -168,16 +179,5 @@ export const useStore = create(
           machineLogs: useStockStore.getState().machineLogs
         }, null, 2);
       }
-    }),
-    {
-      name: 'chakkibook_store_v2',
-      partialize: (state) => ({
-        customers: useKhataStore.getState().customers,
-        boris: useDashboardStore.getState().boris,
-        stockEntries: useStockStore.getState().stockEntries,
-        shop: useSettingsStore.getState().shop,
-        schemaVersion: 2
-      })
-    }
-  )
+    })
 );

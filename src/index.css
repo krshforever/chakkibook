@@ -62,6 +62,66 @@
   --touch-target-min: 48px;
 
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ==========================================================================
+     ALIAS TOKENS — added 2026-10-11
+     These were referenced across ~14 files but never defined, so every usage
+     silently resolved to nothing (hsl() with an empty triple is invalid, so
+     `hsl(var(--ink-1))` fell back to inherited color and `var(--bg-main)`
+     resolved to `initial`). Two naming conventions coexist in this codebase,
+     so aliases are defined to match how they are consumed:
+
+     A) `hsl(var(--x))`  → --x holds BARE HSL COMPONENTS  e.g. `30 25% 10%`
+     B) `var(--x)`       → --x holds a COMPLETE COLOR VALUE  e.g. `hsl(38 30% 95%)`
+     ========================================================================== */
+
+  /* Primary ink — the old codebase called it --ink-1, the system says --ink */
+  --ink-1: var(--ink);                          /* B */
+
+  /* Page canvas / card surface aliases (B) */
+  --bg-main: hsl(var(--paper));
+  --card-bg: hsl(var(--surface));
+  --text-muted: hsl(var(--ink-3));
+
+  /* Brand surface aliases (B-adjacent: consumed via hsl() so bare triples) */
+  --brand-tint: 38 70% 92%;
+  --brand-light: 38 90% 95%;
+  --brand-line: 38 20% 85%;
+  --primary-light: hsl(var(--tint));            /* consumed as var() → full value */
+
+  /* AI accent — was rendering as NOTHING inside index.css itself, because
+     `.ai-banner-row` and `.ai-avatar-indigo` referenced --ai-indigo while the
+     token table only defined --indigo-600. */
+  --ai-indigo: 239 84% 67%;
+  --ai-indigo-tint: 240 70% 96%;
+
+  /* Semantic ledger status — overdue (udhar) vs settled */
+  --risk-udhar-bg: 345 75% 95%;
+  --risk-udhar-text: 345 80% 41%;
+  --status-healthy-bg: 138 45% 93%;
+  --status-healthy-text: 142 60% 25%;
+  --status-pending-bg: 38 70% 92%;
+  --status-pending-text: 32 100% 39%;
+
+  /* Elevation */
+  --shadow-modal: 0 24px 64px -12px rgba(33, 26, 18, 0.28);
+
+  /* ==========================================================================
+     VOICE MODE TOKENS
+     The hands-free surface gets its own scale so it can be tuned independently
+     of the ledger chrome. Everything here is sized for a phone held at arm's
+     length in a noisy shop, and for operators who may not read.
+     ========================================================================== */
+  --voice-orb-size: clamp(220px, 62vw, 320px);
+  --voice-orb-ring: 1px;
+  --voice-idle: 30 25% 10%;
+  --voice-listening: 32 100% 45%;
+  --voice-speaking: 239 84% 67%;
+  --voice-thinking: 38 100% 55%;
+  --voice-error: 345 80% 41%;
+  --voice-glow-idle: 0 0 0 0 hsl(var(--voice-idle) / 0);
+  --voice-glow-listening: 0 0 60px -8px hsl(var(--voice-listening) / 0.55);
+  --voice-glow-speaking: 0 0 60px -8px hsl(var(--voice-speaking) / 0.55);
 }
 
 [data-mode="chakki"] {
@@ -395,4 +455,681 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid hsl(var(--brand-500));
   outline-offset: 2px;
+}
+
+/* ==========================================================================
+   MISSING UTILITY CLASSES — restored 2026-10-11
+
+   Every class below was referenced by JSX but never defined. Either the
+   stylesheet section was lost, or components were written against a spec that
+   was never landed. Each is scoped to a single concern so it cannot leak.
+   ========================================================================== */
+
+/* `.card` — Analytics.jsx and others. Generic raised surface on the paper. */
+.card {
+  background-color: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+/* `.numeral-serif` — display weight for money. Tabular so columns align. */
+.numeral-serif {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* `.tap-effect` — tactile press affordance for touch targets.
+   Uses transform/opacity only, so it stays on the compositor. */
+.tap-effect {
+  transition: transform 120ms var(--ease-spring), opacity 120ms var(--ease-spring);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.tap-effect:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tap-effect:active { transform: none; }
+}
+
+/* `.spin` — loading indicator (AISheet, BillCard, etc.) */
+.spin {
+  animation: cb-spin 900ms linear infinite;
+}
+@keyframes cb-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation-duration: 3s; }
+}
+
+/* `.app-container` / `.bottom-nav-container` — legacy shell names */
+.app-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: hsl(var(--paper));
+}
+.bottom-nav-container {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 600px;
+  z-index: 100;
+}
+
+/* `.form-input` / `.input-label` — form primitives */
+.form-input {
+  width: 100%;
+  min-height: var(--touch-target-min);
+  padding: 0 0.875rem;
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-sm);
+  background-color: hsl(var(--surface));
+  color: hsl(var(--ink));
+  font-family: var(--font-body);
+  /* 16px min: anything smaller triggers iOS/Android auto-zoom on focus. */
+  font-size: 16px;
+  font-weight: 600;
+}
+.form-input::placeholder {
+  color: hsl(var(--ink-3));
+  font-weight: 500;
+}
+.input-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: hsl(var(--ink-2));
+  margin-bottom: 0.375rem;
+}
+
+/* `.big-btn` — oversized primary action for the shop floor */
+.big-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 60px;
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, hsl(var(--brand-500)), hsl(var(--brand-600)));
+  box-shadow: 0 8px 20px -8px rgba(201, 106, 0, 0.45);
+  cursor: pointer;
+}
+
+/* `.section-header` / `.section-badge` — list section headings */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+}
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: hsl(var(--tint));
+  color: hsl(var(--brand-700));
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* `.gaon-selector-container` — village pill rail */
+.gaon-selector-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.125rem 0.25rem 0.5rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.gaon-selector-container::-webkit-scrollbar { display: none; }
+.gaon-selector-container > * { scroll-snap-align: start; flex-shrink: 0; }
+
+/* `.fab-pulse-ring` — invites the first tap on the voice FAB */
+.fab-pulse-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  border: 2px solid hsl(var(--brand-500));
+  opacity: 0;
+  animation: cb-fab-pulse 2.6s var(--ease-spring) infinite;
+  pointer-events: none;
+}
+@keyframes cb-fab-pulse {
+  0%        { transform: scale(0.9); opacity: 0.55; }
+  70%       { transform: scale(1.35); opacity: 0; }
+  100%      { transform: scale(1.35); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fab-pulse-ring { animation: none; opacity: 0; }
+}
+
+/* `.cb-tab-btn` / `.cb-submit-btn` / `.cb-spinner` — entry-form controls */
+.cb-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4375rem;
+  min-height: var(--touch-target-min);
+  padding: 0 0.875rem;
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-sm);
+  background-color: hsl(var(--surface));
+  color: hsl(var(--ink-2));
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-spring), border-color 140ms var(--ease-spring);
+}
+.cb-tab-btn[aria-pressed="true"] {
+  border-width: 2px;
+  border-color: hsl(var(--brand-500));
+  background-color: hsl(var(--tint));
+  color: hsl(var(--brand-700));
+}
+.cb-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(180deg, hsl(var(--brand-500)), hsl(var(--brand-600)));
+  box-shadow: 0 8px 20px -8px rgba(201, 106, 0, 0.45);
+  cursor: pointer;
+}
+.cb-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid hsl(var(--line-2));
+  border-top-color: hsl(var(--brand-600));
+  border-radius: 50%;
+  animation: cb-spin 700ms linear infinite;
+}
+
+/* ==========================================================================
+   VOICE MODE — the AI-first surface
+   ========================================================================== */
+
+.cb-voice-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem 1rem calc(6.5rem + env(safe-area-inset-bottom, 0px));
+  align-items: stretch;
+}
+
+.cb-voice-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 40px;
+}
+
+.cb-engine-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  height: 26px;
+  padding: 0 0.625rem;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid hsl(var(--line));
+  background: hsl(var(--surface));
+  color: hsl(var(--ink-2));
+}
+.cb-engine-chip.is-gemini {
+  background: hsl(var(--ai-indigo-tint));
+  border-color: hsl(var(--ai-indigo) / 0.28);
+  color: hsl(239 60% 45%);
+}
+.cb-engine-chip.is-local {
+  background: hsl(var(--surface-2));
+  color: hsl(var(--ink-3));
+}
+
+.cb-voice-ghost {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-sm);
+  background: hsl(var(--surface));
+  color: hsl(var(--ink-2));
+  cursor: pointer;
+}
+.cb-voice-ghost.is-wide {
+  width: auto;
+  gap: 0.375rem;
+  padding: 0 0.75rem;
+  font-size: 12px;
+  font-weight: 700;
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.cb-voice-keypanel {
+  padding: 0.875rem;
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-md);
+  background: hsl(var(--surface));
+}
+
+/* The orb stage: pinned to a comfortable optical centre, not the exact
+   geometric centre, because the label and read-back sit below it. */
+.cb-voice-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.125rem;
+  padding: 0.5rem 0 0.25rem;
+}
+
+.cb-voice-status {
+  font-family: var(--font-display);
+  font-size: 1.3125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: hsl(var(--ink));
+  text-align: center;
+  /* aria-live already announces it; this keeps the line from reflowing when
+     the text length changes between states. */
+  min-height: 1.6em;
+}
+
+/* --- Orb motion ----------------------------------------------------------- */
+
+.cb-orb-halo {
+  animation: cb-orb-breathe 3.6s ease-in-out infinite;
+}
+@keyframes cb-orb-breathe {
+  0%, 100% { opacity: 0.08; }
+  50%      { opacity: 0.2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-orb-halo { animation: none; opacity: 0.12; }
+}
+
+.cb-orb-ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--voice-listening));
+  opacity: 0;
+  pointer-events: none;
+  animation: cb-orb-ripple 2.4s var(--ease-spring) infinite;
+}
+@keyframes cb-orb-ripple {
+  0%   { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-orb-ripple { display: none; }
+}
+
+/* --- Read-back ------------------------------------------------------------ */
+
+.cb-readback {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-md);
+  background: hsl(var(--surface));
+}
+
+.cb-readback-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+.cb-readback-row.is-agent {
+  padding-top: 0.625rem;
+  border-top: 1px solid hsl(var(--line));
+}
+
+.cb-readback-who {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: hsl(var(--ink-3));
+}
+
+.cb-readback-text {
+  font-family: var(--font-display);
+  font-size: 1.0625rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: hsl(var(--ink));
+}
+.cb-readback-row.is-agent .cb-readback-text {
+  color: hsl(var(--ink-2));
+}
+
+/* --- Money confirmation --------------------------------------------------- */
+
+.cb-confirm {
+  padding: 1.125rem 1rem 1rem;
+  border-radius: var(--radius-lg);
+  border: 2px solid hsl(var(--brand-500));
+  background: hsl(var(--surface));
+  text-align: center;
+  animation: cb-confirm-in 260ms var(--ease-spring);
+}
+@keyframes cb-confirm-in {
+  from { transform: translateY(8px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-confirm { animation: none; }
+}
+
+.cb-confirm-amount {
+  font-size: 1rem;
+  font-weight: 700;
+  color: hsl(var(--ink));
+}
+.cb-confirm-figure {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: hsl(var(--ink));
+  font-variant-numeric: tabular-nums;
+  margin: 0.125rem 0 0.25rem;
+}
+.cb-confirm-q {
+  font-size: 0.8125rem;
+  color: hsl(var(--ink-2));
+  margin-bottom: 0.875rem;
+}
+.cb-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+.cb-confirm-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 76px;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 800;
+}
+.cb-confirm-btn.is-yes {
+  background: linear-gradient(180deg, hsl(142 55% 32%), hsl(142 60% 25%));
+  box-shadow: 0 8px 18px -8px hsl(142 60% 25% / 0.6);
+}
+.cb-confirm-btn.is-no {
+  background: linear-gradient(180deg, hsl(345 70% 46%), hsl(345 80% 36%));
+  box-shadow: 0 8px 18px -8px hsl(345 80% 36% / 0.5);
+}
+
+/* --- Quick commands ------------------------------------------------------- */
+
+.cb-quick-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+/* --- Foliage ------------------------------------------------------------- */
+
+.cb-voice-jump {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: hsl(var(--brand-600));
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  align-self: center;
+}
+
+.cb-voice-hint {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  color: hsl(var(--ink-3));
+}
+
+/* Persistent voice FAB for the other tabs — voice is never more than one tap
+   away, on every screen, which is what "AI-first" actually means in practice. */
+.cb-voice-fab {
+  position: fixed;
+  right: 16px;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: radial-gradient(circle at 32% 28%, hsl(239 84% 67%) 0%, hsl(239 70% 48%) 80%);
+  box-shadow: 0 12px 28px -10px hsl(239 84% 40% / 0.7);
+}
+
+/* ==========================================================================
+   APP SHELL — top bar, mode switch, voice pip, splash
+   ========================================================================== */
+
+.cb-appbar-mark {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: hsl(var(--tint));
+  color: hsl(var(--brand-600));
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cb-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  background: hsl(var(--surface-2));
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-pill);
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.cb-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 9px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: hsl(var(--ink-3));
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms var(--ease-spring), color 160ms var(--ease-spring);
+}
+.cb-mode-btn[data-active='true'] {
+  background: hsl(var(--surface));
+  color: hsl(var(--ink));
+  box-shadow: 0 1px 3px rgba(33, 26, 18, 0.12);
+}
+.cb-mode-btn.is-chakki[data-active='true'] { color: hsl(var(--brand-600)); }
+.cb-mode-btn.is-spellar[data-active='true'] { color: hsl(var(--spellar-700)); }
+
+/* Voice state pip — mirrors the orb's colour language */
+.cb-voice-pip {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  background: hsl(var(--ink-3));
+  transition: background-color 200ms var(--ease-spring), box-shadow 200ms var(--ease-spring);
+}
+.cb-voice-pip.state-listening {
+  background: hsl(var(--voice-listening));
+  box-shadow: 0 0 0 0 hsl(var(--voice-listening) / 0.5);
+  animation: cb-pip-pulse 1.4s ease-out infinite;
+}
+.cb-voice-pip.state-thinking { background: hsl(var(--voice-thinking)); }
+.cb-voice-pip.state-speaking {
+  background: hsl(var(--voice-speaking));
+  box-shadow: 0 0 0 5px hsl(var(--voice-speaking) / 0.18);
+}
+.cb-voice-pip.state-error { background: hsl(var(--voice-error)); }
+.cb-voice-pip.state-ready,
+.cb-voice-pip.state-connecting { background: hsl(var(--ink-2)); }
+
+@keyframes cb-pip-pulse {
+  0%   { box-shadow: 0 0 0 0 hsl(var(--voice-listening) / 0.5); }
+  100% { box-shadow: 0 0 0 10px hsl(var(--voice-listening) / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cb-voice-pip.state-listening { animation: none; }
+}
+
+/* Splash / fatal screens. Replaces the old inline-styled emoji screens. */
+.cb-splash {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 24px;
+  text-align: center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, hsl(38 70% 96%) 0%, hsl(var(--paper)) 58%),
+    hsl(var(--paper));
+}
+
+.cb-splash-mark {
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, hsl(var(--brand-500)), hsl(var(--brand-600)));
+  color: #fff;
+  box-shadow: 0 18px 40px -14px hsl(var(--brand-600) / 0.7);
+  margin-bottom: 0.875rem;
+}
+.cb-splash-mark.is-error {
+  background: linear-gradient(180deg, hsl(345 70% 48%), hsl(345 80% 36%));
+  box-shadow: 0 18px 40px -14px hsl(345 80% 36% / 0.6);
+}
+
+.cb-splash-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: hsl(var(--brand-700));
+}
+
+.cb-splash-sub {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--ink-2));
+  line-height: 1.5;
+}
+
+.cb-tab-loading {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: hsl(var(--brand-600));
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+/* ==========================================================================
+   HOME — voice entry card
+   ========================================================================== */
+
+.cb-home-voice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 14px;
+  border: none;
+  border-left: 3px solid hsl(var(--ai-indigo));
+  border-radius: var(--radius-md);
+  background: hsl(var(--surface));
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-body);
+  color: hsl(var(--ink));
+  box-shadow: 0 1px 2px rgba(33, 26, 18, 0.04);
+}
+.cb-home-voice:active { transform: scale(0.985); }
+
+.cb-home-voice-orb {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: #fff;
+  background: radial-gradient(circle at 32% 28%, hsl(239 84% 67%) 0%, hsl(239 70% 48%) 80%);
+  box-shadow: 0 6px 16px -6px hsl(239 84% 45% / 0.7);
 }

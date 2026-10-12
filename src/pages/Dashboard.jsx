@@ -1,8 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { Check, ChevronRight, BarChart2, Users, Bot } from 'lucide-react';
+import { Check, ChevronRight, BarChart2, Users, Mic } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import GaonSelector from '../components/shared/GaonSelector';
 import SearchBar from '../components/shared/SearchBar';
+import { identifyAtRiskCustomers, predictNextWeekDemand } from '../services/predictive';
+
+/**
+ * Dashboard.
+ *
+ * Everything on this screen is now computed from the ledger. The previous
+ * version shipped three hardcoded strings — a "+12%" trend badge, a
+ * "₹2,130 atke hain" insight line, and "Kal ki demand: ~420 kg gehun" —
+ * presented to a shopkeeper as if they were live business data. They were
+ * decorative text that could be flatly wrong, which is worse than showing
+ * nothing. The predictive engine in `services/predictive.js` that should have
+ * been powering these existed and was never imported anywhere.
+ */
 
 export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEntry }) {
   const activeMode = useStore((state) => state.activeMode || 'chakki');
@@ -12,21 +25,23 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
   const markBoriDone = useStore((state) => state.markBoriDone);
   const selectedVillage = useStore((state) => state.selectedVillage || 'all');
   const setSelectedVillage = useStore((state) => state.setSelectedVillage);
-  const toggleAISheet = useStore((state) => state.toggleAISheet);
 
   const [searchQuery, setSearchQuery] = useState('');
 
   const now = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => now.toISOString().split('T')[0], [now]);
-  const dateFormatted = useMemo(() => {
-    return now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' });
-  }, [now]);
+  const yesterdayStr = useMemo(
+    () => new Date(now.getTime() - 86400000).toISOString().split('T')[0],
+    [now]
+  );
+  const dateFormatted = useMemo(
+    () => now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }),
+    [now]
+  );
 
-  // Mode filtered boris
   const modeBoris = useMemo(() => boris.filter((b) => b.mode === activeMode), [boris, activeMode]);
   const query = searchQuery.trim().toLowerCase();
 
-  // Search filter
   const matchesSearch = (b) => {
     if (!query) return true;
     return (
@@ -37,7 +52,6 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
     );
   };
 
-  // Village filter
   const matchesVillage = (b) => {
     if (selectedVillage === 'all') return true;
     const vTarget = selectedVillage.trim().toLowerCase();
@@ -47,7 +61,6 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
     return (cust?.village || '').trim().toLowerCase() === vTarget;
   };
 
-  // Pending Queue
   const pendingBoris = useMemo(() => {
     return modeBoris
       .filter((b) => b.status === 'pending')
@@ -56,56 +69,73 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
       .sort((a, b) => new Date(a.dropOffDate || a.createdAt).getTime() - new Date(b.dropOffDate || b.createdAt).getTime());
   }, [modeBoris, selectedVillage, query]);
 
-  // Today Earnings calculation
-  const todayEarnings = useMemo(() => {
-    return modeBoris
-      .filter((b) => {
-        const dStr = (b.dropOffDate || b.createdAt || '').split('T')[0];
-        return dStr === todayStr;
-      })
-      .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
-  }, [modeBoris, todayStr]);
+  const dayKey = (b, dateStr) => String(b.dropOffDate || b.createdAt || '').split('T')[0] === dateStr;
 
-  // Today Pisai (kg)
-  const todayPisaiKg = useMemo(() => {
-    return modeBoris
-      .filter((b) => {
-        const dStr = (b.dropOffDate || b.createdAt || '').split('T')[0];
-        return dStr === todayStr;
-      })
-      .reduce((sum, b) => sum + (Number(b.inputWeight) || 0), 0);
-  }, [modeBoris, todayStr]);
+  const todayEarnings = useMemo(
+    () => modeBoris.filter((b) => dayKey(b, todayStr)).reduce((s, b) => s + (Number(b.amount) || 0), 0),
+    [modeBoris, todayStr]
+  );
+  const yesterdayEarnings = useMemo(
+    () => modeBoris.filter((b) => dayKey(b, yesterdayStr)).reduce((s, b) => s + (Number(b.amount) || 0), 0),
+    [modeBoris, yesterdayStr]
+  );
+  const todayPisaiKg = useMemo(
+    () => modeBoris.filter((b) => dayKey(b, todayStr)).reduce((s, b) => s + (Number(b.inputWeight) || 0), 0),
+    [modeBoris, todayStr]
+  );
+  const totalUdhar = useMemo(
+    () => customers.reduce((sum, c) => sum + (Number(c.balance || 0) > 0 ? Number(c.balance) : 0), 0),
+    [customers]
+  );
 
-  // Total Baki Udhar
-  const totalUdhar = useMemo(() => {
-    return customers.reduce((sum, c) => sum + (Number(c.balance || 0) > 0 ? Number(c.balance) : 0), 0);
-  }, [customers]);
+  // Real trend. Only shown when there is a comparable prior day, otherwise it
+  // is a divide-by-zero theatre.
+  const trend = useMemo(() => {
+    if (yesterdayEarnings <= 0) return null;
+    const pct = Math.round(((todayEarnings - yesterdayEarnings) / yesterdayEarnings) * 100);
+    return { pct, up: pct >= 0 };
+  }, [todayEarnings, yesterdayEarnings]);
 
-  const ownerFirstName = (shop?.ownerName || 'Anuj').split(' ')[0];
+  const churn = useMemo(() => identifyAtRiskCustomers(customers, boris), [customers, boris]);
+  const forecast = useMemo(() => predictNextWeekDemand(boris), [boris]);
+
+  // Debtors list, worst first — replaces the fixed "₹2,130 / 2 grahak" line.
+  const topDebtors = useMemo(
+    () => customers
+      .filter((c) => Number(c.balance) > 0)
+      .sort((a, b) => Number(b.balance) - Number(a.balance))
+      .slice(0, 5),
+    [customers]
+  );
+
+  const ownerFirstName = (shop?.ownerName || 'Bhaiya').split(' ')[0];
 
   return (
-    <div style={{ padding: '1rem 1rem 6rem', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-      
-      {/* 1. TOP GREETING LINE & V1 HERO */}
+    <div style={{ padding: '1rem 1rem 6.5rem', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
       <div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '600', color: 'hsl(var(--ink))', lineHeight: 1.2 }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: '600', color: 'hsl(var(--ink))', lineHeight: 1.2, letterSpacing: '-0.02em' }}>
           Namaste, {ownerFirstName} ji
         </h1>
-        <p style={{ fontSize: '12.5px', color: 'hsl(var(--ink-2))', marginTop: '2px' }}>
+        <p style={{ fontSize: '12.5px', fontWeight: '600', color: 'hsl(var(--ink-3))', marginTop: '2px' }}>
           {dateFormatted}
         </p>
       </div>
 
-      {/* V1 HERO SECTION */}
+      {/* HERO — today's actuals */}
       <section className="surface hero">
         <div className="hlabel">
           <span>Aaj ki kamai</span>
-          <span className="trend">+12%</span>
+          {trend && (
+            <span className="trend" style={{ color: trend.up ? 'hsl(var(--green-700))' : 'hsl(var(--red-600))' }}>
+              {trend.up ? '+' : ''}{trend.pct}%
+            </span>
+          )}
         </div>
         <div className="hbig num">₹{todayEarnings.toLocaleString('en-IN')}</div>
         <div className="hsplit">
           <div>
-            <div className="hlabel">Pisai aaj</div>
+            <div className="hlabel">{activeMode === 'chakki' ? 'Pisai aaj' : 'Pirai aaj'}</div>
             <div className="v">{todayPisaiKg} kg</div>
           </div>
           <div>
@@ -118,7 +148,23 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
         </div>
       </section>
 
-      {/* 2. V2 QUICK ACTIONS */}
+      {/* VOICE — the primary action, on every screen */}
+      <button
+        type="button"
+        onClick={() => setActiveTab('voice')}
+        className="cb-home-voice"
+      >
+        <span className="cb-home-voice-orb"><Mic size={22} strokeWidth={2.4} /></span>
+        <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '1px', minWidth: 0, flex: 1 }}>
+          <b style={{ fontSize: '14.5px', fontWeight: '800', letterSpacing: '-0.01em' }}>ChakkiBot se boliye</b>
+          <span style={{ fontSize: '11.5px', fontWeight: '600', color: 'hsl(var(--ink-3))' }}>
+            Haath free — "Ramesh se 500 jama karo"
+          </span>
+        </span>
+        <ChevronRight size={18} style={{ color: 'hsl(var(--ai-indigo))', flexShrink: 0 }} />
+      </button>
+
+      {/* QUICK ACTIONS */}
       <div className="acts">
         <button className="btn-brand" onClick={onOpenNewEntry}>
           + Nayi Bori Entry
@@ -128,71 +174,53 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
         </button>
       </div>
 
-      {/* 3. V3 AI BANNER */}
-      <div className="ai-banner-row" onClick={toggleAISheet}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-          <div className="ai-avatar-indigo">
-            <Bot size={18} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <b style={{ fontSize: '11px', fontWeight: '700', color: 'hsl(var(--ai-indigo))', lineHeight: 1.2 }}>
-              ChakkiBot · 1 insight
-            </b>
-            <span style={{ fontSize: '12.5px', color: 'hsl(var(--ink-2))', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              2 grahak ke ₹2,130 atke hain — tap to see details
-            </span>
-          </div>
-        </div>
-        <ChevronRight size={16} style={{ color: 'hsl(var(--ink-3))', flexShrink: 0 }} />
-      </div>
-
-      {/* 4. (a) PRO INSIGHTS SURFACE */}
+      {/* REAL INSIGHTS — computed, not decorated */}
       <section className="surface">
-        <div style={{ padding: '12px 14px', borderBottom: '1px solid hsl(var(--line))', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '15px', fontWeight: '600', color: 'hsl(var(--ink))' }}>
-              Proactive Intelligence
-            </h2>
-            <span className="pro-tag">PRO</span>
-          </div>
+        <div style={{ padding: '12px 14px', borderBottom: '1px solid hsl(var(--line))', display: 'flex', alignItems: 'center' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'hsl(var(--ink))' }}>Aaj ke insights</h2>
         </div>
 
-        <div>
-          <div className="ins-row" onClick={toggleAISheet} style={{ cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <BarChart2 size={16} style={{ color: 'hsl(var(--ink-2))' }} />
-              <span>Kal ki demand: ~420 kg gehun</span>
-            </div>
-            <ChevronRight size={14} style={{ color: 'hsl(var(--ink-3))' }} />
-          </div>
-
+        {topDebtors.length > 0 && (
           <div className="ins-row" onClick={() => setActiveTab('khata')} style={{ cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Users size={16} style={{ color: 'hsl(var(--ink-2))' }} />
-              <span>3 grahak 30 din se nahi aaye</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <Users size={16} style={{ color: 'hsl(var(--red-600))', flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                Sabse zyada: {topDebtors[0].name} — ₹{Number(topDebtors[0].balance).toLocaleString('en-IN')}
+              </span>
             </div>
-            <ChevronRight size={14} style={{ color: 'hsl(var(--ink-3))' }} />
+            <ChevronRight size={14} style={{ color: 'hsl(var(--ink-3))', flexShrink: 0 }} />
+          </div>
+        )}
+
+        <div className="ins-row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <BarChart2 size={16} style={{ color: 'hsl(var(--ai-indigo))', flexShrink: 0 }} />
+            <span>{forecast.message}</span>
           </div>
         </div>
+
+        {churn.count > 0 && (
+          <div className="ins-row" onClick={() => setActiveTab('khata')} style={{ cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+              <Users size={16} style={{ color: 'hsl(var(--ink-3))', flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{churn.message}</span>
+            </div>
+            <ChevronRight size={14} style={{ color: 'hsl(var(--ink-3))', flexShrink: 0 }} />
+          </div>
+        )}
       </section>
 
-      {/* 5. (b) VILLAGE CHIPS ROW WITH LIVE COUNTS */}
-      <GaonSelector
-        selectedVillage={selectedVillage}
-        onSelectVillage={setSelectedVillage}
-      />
+      <GaonSelector selectedVillage={selectedVillage} onSelectVillage={setSelectedVillage} />
 
-      {/* 6. (c) SEARCH FIELD */}
       <SearchBar
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         onClear={() => setSearchQuery('')}
       />
 
-      {/* 7. QUEUE SECTION HEAD + QUEUE (V4 `.q-row` target ≤76px per row) */}
       <section className="surface" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid hsl(var(--line))', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: '600', color: 'hsl(var(--ink))' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', color: 'hsl(var(--ink))' }}>
             Pending Bori Queue ({pendingBoris.length})
           </h2>
         </div>
@@ -210,7 +238,7 @@ export default function Dashboard({ setActiveTab, onSelectCustomer, onOpenNewEnt
                   <span className="q-main">
                     <span className="q-name">{b.customerName}</span>
                     <span className="q-sub">
-                      {b.inputWeight} kg {b.grainType} · {b.customerVillage || 'Main'} · {b.notes || 'Grinding'} · <b className={isDue ? 'due' : 'ok'}>{isDue ? 'Udhar' : 'Nokad'}</b>
+                      {b.inputWeight} kg {b.grainType} · {b.customerVillage || 'Main'} · <b className={isDue ? 'due' : 'ok'}>{isDue ? 'Udhar' : 'Nokad'}</b>
                     </span>
                   </span>
                   <span className="q-side">
