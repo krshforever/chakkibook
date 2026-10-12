@@ -2,9 +2,10 @@ name: Build Chakkibook Web & Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, ai-first ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, ai-first ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -38,7 +39,12 @@ jobs:
         run: |
           npx cap add android
           npx cap sync android
-          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.SEND_SMS" />' android/app/src/main/AndroidManifest.xml
+          # Voice is the app's primary input. Without RECORD_AUDIO the whole
+          # voice path — Web Speech fallback and the Gemini Live AudioWorklet —
+          # fails at runtime with a permission error.
+          sed -i '/<\/manifest>/i \    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
+          sed -i '/<\/manifest>/i \    <uses-feature android:name="android.hardware.microphone" android:required="true" />' android/app/src/main/AndroidManifest.xml
+          sed -i 's|android:theme="@style/AppTheme">|android:theme="@style/AppTheme" android:hardwareAccelerated="true">|' android/app/src/main/AndroidManifest.xml
 
       - name: Build Android APK (Gradle assembleDebug)
         run: |
