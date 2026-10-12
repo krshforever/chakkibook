@@ -45,6 +45,9 @@ dist/
 .gemini-key
 .gemini-key.*
 
+# Self-signed TLS certs for LAN HTTPS testing (per-machine, per-IP).
+.certs/
+
 # Local test build output
 dist-test/
 

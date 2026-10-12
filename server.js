@@ -223,3 +223,32 @@ server.listen(PORT, () => {
   console.log(`  Token broker : ${API_KEY ? 'ready' : 'disabled (no key)'}`);
   console.log(`  Serving dist from ${distDir}`);
 });
+
+// Optional HTTPS listener for phone testing over LAN.
+//
+// Voice input (getUserMedia, and reliably SpeechRecognition) requires a secure
+// context, which plain http://<lan-ip> is not. When .certs/cert.pem and
+// .certs/key.pem exist (self-signed, generated per machine/IP, never
+// committed), the same handler is also served over TLS. The phone will show a
+// cert warning once — accept it, and the origin becomes a secure context.
+//
+// Generate: openssl req -x509 -newkey rsa:2048 -keyout .certs/key.pem \
+//   -out .certs/cert.pem -days 90 -nodes -subj "/CN=<lan-ip>" \
+//   -addext "subjectAltName=IP:<lan-ip>"
+try {
+  const https = await import('node:https');
+  const certPath = path.join(__dirname, '.certs', 'cert.pem');
+  const keyPath = path.join(__dirname, '.certs', 'key.pem');
+  if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+    const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 8443;
+    const handler = server.listeners('request')[0];
+    https.default.createServer({
+      cert: fs.readFileSync(certPath),
+      key: fs.readFileSync(keyPath)
+    }, handler).listen(HTTPS_PORT, () => {
+      console.log(`Chakkibook (HTTPS) at https://<lan-ip>:${HTTPS_PORT} — accept the cert warning on the phone`);
+    });
+  }
+} catch (e) {
+  console.warn('[chakkibook] HTTPS listener not started:', e.message);
+}
