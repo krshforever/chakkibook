@@ -26,15 +26,22 @@ globalThis.document = {
   addEventListener() {}, removeEventListener() {},
   createElement() { return { style: {}, setAttribute() {}, appendChild() {} }; }
 };
+// Zustand's persist middleware resolves `window.localStorage` first and falls
+// back to the global. Both must point at the same store or writes land in a
+// place the assertions never see.
 globalThis.localStorage = (() => {
   const m = new Map();
   return {
     getItem: (k) => (m.has(k) ? m.get(k) : null),
     setItem: (k, v) => m.set(k, String(v)),
     removeItem: (k) => m.delete(k),
-    clear: () => m.clear()
+    clear: () => m.clear(),
+    get length() { return m.size; },
+    key: (i) => Array.from(m.keys())[i] ?? null
   };
 })();
+globalThis.window.localStorage = globalThis.localStorage;
+globalThis.window.navigator = globalThis.navigator;
 // Node 21+ defines a read-only global `navigator`; redefine rather than assign.
 try {
   Object.defineProperty(globalThis, 'navigator', {
@@ -405,6 +412,117 @@ check('a voice payment survives a rehydration', async () => {
     before,
     'balance lost across serialisation'
   );
+});
+
+// ==========================================================================
+// AUTH — Google + phone OTP bootstrap
+// ==========================================================================
+
+console.log('Auth & shop bootstrap');
+
+// Both auth modules import the Firebase app, which needs a DOM and IndexedDB.
+// The shims at the top of this file cover enough of that for import to
+// succeed; the functions under test are pure decision logic on top.
+const {
+  toE164,
+  authErrorMessage,
+  phoneToEmail,
+  AUTH_ERRORS
+} = await import('../src/firebase/auth.js');
+
+const boot = await import('../src/firebase/shopBootstrap.js');
+const { shopIdForUser, resolveShopForUser, createShopForUser, __setDeps, __resetDeps } = boot;
+
+// Inject fake Firestore bindings. ES module exports are read-only getters, so
+// stubbing them after import is impossible — hence the injection seam on the
+// module itself.
+const created = [];
+__setDeps({
+  findShopByPhone: async (p) => (created.find((c) => c.ownerPhone === p) ? `shop_${p}` : null),
+  findShopByEmail: async (e) => (created.find((c) => c.ownerEmail === e) ? `shop_${e}` : null),
+  getShopDoc: async (id) => created.find((c) => c.id === id) || null,
+  createShopDoc: async (id, data) => { created.push({ id, ...data }); },
+  addMemberToFirestore: async (id, member) => { created.push({ id, member }); }
+});
+
+check('toE164 prefixes 10 digits', () => {
+  assert.strictEqual(toE164('9876543210'), '+919876543210');
+});
+check('toE164 is idempotent on an already-coded number', () => {
+  assert.strictEqual(toE164('+919876543210'), '+919876543210');
+});
+check('toE164 strips spaces and dashes', () => {
+  assert.strictEqual(toE164('98765-43210'), '+919876543210');
+});
+
+check('every AUTH_ERRORS entry maps to non-empty copy', () => {
+  Object.entries(AUTH_ERRORS).forEach(([code, msg]) => {
+    assert.ok(typeof msg === 'string' && msg.length > 0, `${code} has empty copy`);
+  });
+});
+check('authErrorMessage falls back to err.message for unknown codes', () => {
+  const msg = authErrorMessage({ code: 'auth/mystery', message: 'Custom failure text' });
+  assert.strictEqual(msg, 'Custom failure text');
+});
+check('authErrorMessage handles a bare code string', () => {
+  assert.ok(authErrorMessage('auth/invalid-verification-code').includes('OTP'));
+});
+check('authErrorMessage never returns null', () => {
+  assert.ok(authErrorMessage(null) && authErrorMessage(undefined) && authErrorMessage({}));
+});
+check('phoneToEmail still produces a unique-per-phone address', () => {
+  assert.strictEqual(phoneToEmail('98765-43210'), '9876543210@chakkibook.local');
+});
+
+check('shopIdForUser: phone user gets shop_<digits>', () => {
+  assert.strictEqual(shopIdForUser({ uid: 'x', phoneNumber: '+919876543210' }), 'shop_9876543210');
+});
+check('shopIdForUser: google user gets shop_<email>', () => {
+  assert.strictEqual(shopIdForUser({ uid: 'x', email: 'krish@gmail.com' }), 'shop_krish_gmail_com');
+});
+check('shopIdForUser: null user yields null', () => {
+  assert.strictEqual(shopIdForUser(null), null);
+});
+
+const newPhoneUser = { uid: 'u2', phoneNumber: '+9899999999' };
+
+check('resolveShopForUser: existing phone user passes through', async () => {
+  created.length = 0;
+  created.push({ id: 'shop_9812345678', ownerPhone: '9812345678', ownerEmail: '' });
+  const r = await resolveShopForUser({ uid: 'u1', phoneNumber: '+9812345678' });
+  assert.strictEqual(r.shopId, 'shop_9812345678');
+  assert.strictEqual(r.needsShopData, false);
+});
+check('resolveShopForUser: unknown phone user is told to name a shop', async () => {
+  created.length = 0;
+  const r = await resolveShopForUser(newPhoneUser);
+  assert.strictEqual(r.needsShopData, true);
+});
+check('resolveShopForUser: null user needs shop data', async () => {
+  const r = await resolveShopForUser(null);
+  assert.strictEqual(r.needsShopData, true);
+});
+
+check('createShopForUser writes a shop and returns its id', async () => {
+  created.length = 0;
+  const id = await createShopForUser(newPhoneUser, { shopName: 'Naya Chakki', ownerName: 'Bhaiya' });
+  assert.strictEqual(id, 'shop_9899999999');
+  assert.strictEqual(created.length, 2, 'expected a shop doc plus an owner member');
+  assert.strictEqual(created[0].name, 'Naya Chakki');
+});
+
+check('createShopForUser is idempotent by shop id', async () => {
+  const id2 = await createShopForUser(newPhoneUser, { shopName: 'Naya Chakki' });
+  assert.strictEqual(id2, 'shop_9899999999', 'shop id must be stable across calls');
+});
+
+check('signing in twice must not re-ask for a shop name', async () => {
+  created.length = 0;
+  const u = { uid: 'u4', phoneNumber: '+9876500000' };
+  await createShopForUser(u, { shopName: 'Dual Path' });
+  const r = await resolveShopForUser(u);
+  assert.strictEqual(r.shopId, 'shop_9876500000');
+  assert.strictEqual(r.needsShopData, false);
 });
 
 // ==========================================================================

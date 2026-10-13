@@ -1133,3 +1133,284 @@ textarea:focus-visible {
   background: radial-gradient(circle at 32% 28%, hsl(239 84% 67%) 0%, hsl(239 70% 48%) 80%);
   box-shadow: 0 6px 16px -6px hsl(239 84% 45% / 0.7);
 }
+
+/* ==========================================================================
+   AUTH — sign-in screen
+   Google + phone OTP. No password anywhere.
+
+   Uses the Warm Ledger tokens rather than hardcoded hex, which is what the
+   previous screen did — meaning a theme change left it stranded on a slate
+   palette while the rest of the app moved.
+   ========================================================================== */
+
+.cb-auth {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1.125rem calc(2rem + env(safe-area-inset-bottom, 0px));
+  background:
+    radial-gradient(90% 60% at 50% 0%, hsl(38 80% 96%) 0%, hsl(var(--paper)) 55%),
+    hsl(var(--paper));
+}
+
+.cb-auth-card {
+  width: 100%;
+  max-width: 26rem;
+  padding: 1.75rem 1.375rem 1.5rem;
+  background: hsl(var(--surface));
+  border: 1px solid hsl(var(--line));
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 48px -24px rgba(33, 26, 18, 0.22);
+}
+
+.cb-auth-head {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.cb-auth-mark {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 0.875rem;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, hsl(var(--brand-500)), hsl(var(--brand-600)));
+  color: #fff;
+  box-shadow: 0 14px 30px -12px hsl(var(--brand-600) / 0.7);
+}
+
+.cb-auth-title {
+  font-family: var(--font-display);
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: hsl(var(--ink));
+  margin: 0 0 0.3125rem;
+}
+
+.cb-auth-sub {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: hsl(var(--ink-2));
+  margin: 0;
+}
+
+.cb-auth-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* --- alerts -------------------------------------------------------------- */
+
+.cb-auth-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6875rem 0.875rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  background: hsl(var(--red-tint));
+  border: 1px solid hsl(var(--red-600) / 0.3);
+  color: hsl(var(--red-600));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.cb-auth-alert svg { flex-shrink: 0; margin-top: 1px; }
+
+.cb-auth-note {
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-sm);
+  background: hsl(var(--green-tint));
+  border: 1px solid hsl(var(--green-line));
+  color: hsl(var(--green-700));
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+/* --- provider choice ----------------------------------------------------- */
+
+.cb-auth-google,
+.cb-auth-phone,
+.cb-auth-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 52px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: transform 120ms var(--ease-spring), box-shadow 160ms var(--ease-spring);
+}
+.cb-auth-google:active,
+.cb-auth-phone:active,
+.cb-auth-submit:active { transform: scale(0.985); }
+
+/* Google's own guidance is a white button with a border, which also keeps it
+   from looking like our primary action. */
+.cb-auth-google {
+  background: hsl(var(--surface));
+  border: 1.5px solid hsl(var(--line-2));
+  color: hsl(var(--ink));
+  box-shadow: 0 1px 2px rgba(33, 26, 18, 0.06);
+}
+.cb-auth-google:hover { background: hsl(var(--surface-2)); }
+
+.cb-auth-phone {
+  background: hsl(var(--surface-2));
+  border: 1.5px solid hsl(var(--line));
+  color: hsl(var(--ink-2));
+}
+.cb-auth-phone:hover { background: hsl(var(--tint)); color: hsl(var(--brand-700)); }
+
+.cb-auth-submit {
+  margin-top: 0.25rem;
+  background: linear-gradient(180deg, hsl(var(--brand-500)), hsl(var(--brand-600)));
+  color: #fff;
+  box-shadow: 0 10px 24px -10px hsl(var(--brand-600) / 0.75);
+}
+
+.cb-auth-alert ~ .cb-auth-stack,
+.cb-auth-note ~ .cb-auth-stack { margin-top: 1rem; }
+
+.cb-auth-or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.125rem 0;
+}
+.cb-auth-or::before,
+.cb-auth-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: hsl(var(--line));
+}
+.cb-auth-or span {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(var(--ink-3));
+}
+
+.cb-auth-fineprint {
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(var(--ink-3));
+  text-align: center;
+  margin: 0.25rem 0 0;
+}
+
+.cb-auth-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3125rem;
+  min-height: 44px;
+  border: none;
+  background: none;
+  color: hsl(var(--brand-600));
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* --- fields -------------------------------------------------------------- */
+
+.cb-field { display: flex; flex-direction: column; }
+
+.cb-field-label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.375rem;
+  color: hsl(var(--ink-2));
+  transition: color 140ms var(--ease-spring);
+}
+
+.cb-field-box {
+  border-radius: var(--radius-sm);
+  background: hsl(var(--surface));
+  border: 1.5px solid hsl(var(--line));
+  transition: border-color 140ms var(--ease-spring), box-shadow 140ms var(--ease-spring);
+}
+.cb-field-box[data-focused='true'] {
+  border-color: hsl(var(--brand-500));
+  box-shadow: 0 0 0 3.5px hsl(var(--brand-500) / 0.16);
+}
+
+.cb-auth-input,
+.cb-phone-input input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: hsl(var(--ink));
+  font-family: var(--font-body);
+  /* 16px minimum — anything smaller makes Android zoom on focus and shifts the
+     layout out from under the user. */
+  font-size: 16px;
+  font-weight: 600;
+  outline: none;
+}
+.cb-auth-input::placeholder,
+.cb-phone-input input::placeholder { color: hsl(var(--ink-3)); font-weight: 500; }
+
+/* OTP gets monospaced figures so a mistyped digit is visibly out of rhythm. */
+input[autocomplete='one-time-code'] {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.4em;
+  text-align: center;
+  font-weight: 800;
+}
+
+.cb-phone-input {
+  display: flex;
+  align-items: stretch;
+}
+.cb-phone-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem 0 1rem;
+  background: hsl(var(--surface-2));
+  border-right: 1px solid hsl(var(--line));
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  color: hsl(var(--ink-2));
+  font-size: 15px;
+  font-weight: 800;
+  user-select: none;
+}
+
+.cb-auth-spin { animation: cb-spin 900ms linear infinite; }
+
+.cb-auth-trust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(var(--line));
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: hsl(var(--ink-3));
+}
+.cb-auth-trust svg { color: hsl(var(--green-700)); }
+
+#recaptcha-container { min-height: 0; }

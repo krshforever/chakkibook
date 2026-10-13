@@ -92,6 +92,22 @@ export const findShopByPhone = async (phone) => {
   return null;
 };
 
+// Same idea for a Google account: find the shop this email already owns.
+// A missing composite index on ownerEmail is the usual failure here, and it
+// throws a links-to-create-one error — logged, not swallowed.
+export const findShopByEmail = async (email) => {
+  try {
+    const shopQuery = query(collection(db, 'shops'), where('ownerEmail', '==', email));
+    const snap = await getDocs(shopQuery);
+    if (!snap.empty) {
+      return snap.docs[0].id;
+    }
+  } catch (err) {
+    console.warn('findShopByEmail error:', err);
+  }
+  return null;
+};
+
 // CRUD Operations
 export const addBoriToFirestore = async (shopId, boriData) => {
   const col = getBorisCollection(shopId);

@@ -8,8 +8,8 @@ import VoiceScreen from './components/voice/VoiceScreen';
 import ErrorBoundary from './components/ErrorBoundary';
 import Modal from './components/ui/Modal';
 import { onAuthChange } from './firebase/auth';
+import { resolveShopForUser, shopIdForUser } from './firebase/shopBootstrap';
 import { useStore } from './store/useStore';
-import { findShopByPhone } from './firebase/firestore';
 
 const Khata = lazy(() => import('./pages/Khata'));
 const Inventory = lazy(() => import('./pages/Inventory'));
@@ -30,22 +30,37 @@ export default function App() {
   const currentUser = useStore((state) => state.currentUser);
   const setAuthUser = useStore((state) => state.setAuthUser);
 
+  // True until the shop profile exists. Kept as local state rather than
+  // derived from `currentUser`, because `onAuthChange` fires the instant
+  // Firebase recognises the identity — before a brand-new user has been asked
+  // to name their shop. Gating on the store alone unmounted Login at that
+  // exact moment, so the "name your shop" step could never render.
+  const [needsShopProfile, setNeedsShopProfile] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
     const unsub = onAuthChange(async (user) => {
       try {
         if (user) {
-          const phone = user.email ? user.email.split('@')[0] : '';
           let shopId = null;
+          let needsProfile = false;
           try {
-            shopId = await findShopByPhone(phone);
+            const resolved = await resolveShopForUser(user);
+            shopId = resolved.shopId;
+            needsProfile = Boolean(resolved.needsShopData);
           } catch (e) {
-            console.warn('Firestore findShopByPhone notice:', e);
+            console.warn('Shop resolution notice:', e);
+            shopId = shopIdForUser(user);
           }
-          if (!shopId) shopId = `shop_${phone || 'default'}`;
-          await setAuthUser(user, shopId, 'owner');
+          if (isMounted) {
+            setNeedsShopProfile(needsProfile);
+            await setAuthUser(user, shopId, 'owner');
+          }
         } else {
-          await setAuthUser(null, null, null);
+          if (isMounted) {
+            setNeedsShopProfile(false);
+            await setAuthUser(null, null, null);
+          }
         }
       } catch (err) {
         if (isMounted) setAuthError(err.message || 'Authentication error occurred');
@@ -62,6 +77,7 @@ export default function App() {
 
   const handleLoginSuccess = (user, shopId, role) => {
     setAuthError(null);
+    setNeedsShopProfile(false);
     setAuthUser(user, shopId, role);
   };
 
@@ -116,7 +132,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      {(!currentUser || !currentUser.uid) ? (
+      {(!currentUser || !currentUser.uid || needsShopProfile) ? (
         <Login onLoginSuccess={handleLoginSuccess} />
       ) : (
         <div className="app-shell">

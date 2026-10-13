@@ -1,663 +1,405 @@
-import React, { useState } from "react";
-import { 
-  Key, 
-  UserPlus, 
-  Phone, 
-  Lock, 
-  Store, 
-  User, 
-  Sparkles, 
-  ShieldCheck, 
-  Zap,
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import {
+  Loader2,
   AlertCircle,
-  Eye,
-  EyeOff,
   ArrowRight,
-  Loader2
-} from "lucide-react";
-import { loginUser, registerUser } from "../firebase/auth";
-import { createShopDoc, addMemberToFirestore, findShopByPhone } from "../firebase/firestore";
-import { useTranslation } from "../utils/translations";
+  ArrowLeft,
+  Phone,
+  Store,
+  User,
+  KeyRound,
+  ShieldCheck,
+  MessageSquareLock,
+  Smartphone
+} from 'lucide-react';
+import {
+  signInWithGoogle,
+  resolveGoogleRedirect,
+  attachRecaptcha,
+  sendOtp,
+  confirmOtp,
+  authErrorMessage
+} from '../firebase/auth';
+import { resolveShopForUser, createShopForUser } from '../firebase/shopBootstrap';
+import { useTranslation } from '../utils/translations';
+
+/**
+ * Sign-in.
+ *
+ * Two first-class paths, no password anywhere:
+ *
+ *   Google  — one tap, the identity most Android phones already have.
+ *   Phone   — OTP, no memory required beyond the number itself.
+ *
+ * The old screen demanded a password before anything else, which for the
+ * intended user (a mill operator who may not read) made the rest of the app
+ * unreachable. Both paths converge on `resolveShopForUser`, so a returning
+ * user goes straight through and a new one is asked only for a shop name.
+ *
+ * `step` is an explicit state machine rather than derived flags so that a
+ * failed OTP can drop back to the number step with the number already filled.
+ */
+
+const PHONE_RE = /^[6-9]\d{9}$/;
 
 export default function Login({ onLoginSuccess }) {
   const { t } = useTranslation();
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [shopName, setShopName] = useState("");
-  const [ownerName, setOwnerName] = useState("");
-  const [error, setError] = useState("");
+
+  const [step, setStep] = useState('choose'); // choose | phone | otp | newshop
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [shopName, setShopName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState(null);
+  const [pendingUser, setPendingUser] = useState(null);
+  const [notice, setNotice] = useState('');
 
-  const handleSubmit = async (e) => {
-    e?.preventDefault();
-    setError("");
+  // The confirmation result holds the verification id; it is not stable across
+  // a re-render, so it lives in a ref rather than state.
+  const confirmationRef = useRef(null);
+  const recaptchaRef = useRef(null);
+  const recaptchaWidgetId = useRef(null);
 
-    const cleanPhone = phone.replace(/\D/g, "");
-    if (cleanPhone.length !== 10) {
-      setError("Sahi 10-digit mobile number dalein (e.g. 9876543210)");
-      return;
-    }
+  // A redirect-based Google sign-in lands here with no session until we ask.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const user = await resolveGoogleRedirect();
+        if (!alive || !user) return;
+        await finishLogin(user);
+      } catch (err) {
+        if (alive) setError(authErrorMessage(err));
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
-    if (password.length < 6) {
-      setError("Password kam se kam 6 characters ka hona chahiye");
-      return;
-    }
+  // Tear the reCAPTCHA down on unmount; leaving it mounted leaks the widget
+  // into the next mount of this screen.
+  useEffect(() => {
+    return () => {
+      if (recaptchaRef.current) {
+        try { recaptchaRef.current.clear(); } catch (_) { /* already gone */ }
+        recaptchaRef.current = null;
+      }
+    };
+  }, []);
 
-    setLoading(true);
+  const fail = (err) => setError(authErrorMessage(err));
+  const clearMessages = () => { setError(''); setNotice(''); };
 
+  /** Shared tail for both providers: resolve the shop, then hand off. */
+  const finishLogin = useCallback(async (user) => {
     try {
-      if (isRegistering) {
-        if (!shopName.trim() || !ownerName.trim()) {
-          setError("Shop ka naam aur aapse aapka naam zaroori hai");
-          setLoading(false);
-          return;
-        }
-
-        // Register in Firebase Auth
-        const user = await registerUser(cleanPhone, password);
-        const shopId = `shop_${cleanPhone}`;
-
-        // Create Shop Document in Firestore
-        try {
-          await createShopDoc(shopId, {
-            id: shopId,
-            name: shopName.trim(),
-            ownerName: ownerName.trim(),
-            ownerPhone: cleanPhone,
-            ownerId: user.uid || `user_${cleanPhone}`,
-            address: "Main Market Road",
-            chakkiRates: { pisai: 4, kadda: { wheat: 1, dana: 1.5, maize: 1 }, kaddaPer: 40 },
-            spellarRates: { pirai: 12, khari: 35 },
-            smsSettings: { enabled: true, onDropOff: true, onDone: true, onPickedUp: true },
-            aiEnabled: true
-          });
-
-          await addMemberToFirestore(shopId, {
-            uid: user.uid || `user_${cleanPhone}`,
-            phone: cleanPhone,
-            name: ownerName.trim(),
-            role: "owner"
-          });
-        } catch (dbErr) {
-          console.warn("Firestore optional sync notice:", dbErr);
-        }
-
-        if (onLoginSuccess) onLoginSuccess(user, shopId, "owner");
-      } else {
-        // Login
-        const user = await loginUser(cleanPhone, password);
-        
-        let shopId = null;
-        try {
-          shopId = await findShopByPhone(cleanPhone);
-        } catch (e) {
-          shopId = `shop_${cleanPhone}`;
-        }
-        if (!shopId) shopId = `shop_${cleanPhone}`;
-
-        if (onLoginSuccess) onLoginSuccess(user, shopId, "owner");
+      const { shopId, needsShopData } = await resolveShopForUser(user);
+      if (needsShopData) {
+        setPendingUser(user);
+        setOwnerName(user.displayName || '');
+        setStep('newshop');
+        return;
       }
+      onLoginSuccess(user, shopId, 'owner');
     } catch (err) {
-      console.error("Auth error:", err);
-      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
-        setError("Mobile number ya password galat hai. (New user? Toggle Naya Account!)");
-      } else if (err.code === "auth/email-already-in-use") {
-        setError("Yeh mobile number pehle se registered hai. Sign In karein!");
-      } else {
-        setError(err.message || "Login karne mein dikkat aayi. Kripya firse try karein.");
+      fail(err);
+    }
+  }, [onLoginSuccess]);
+
+  const handleGoogle = async () => {
+    clearMessages();
+    setLoading(true);
+    try {
+      const user = await signInWithGoogle();
+      if (!user) {
+        // Redirect in flight — the page is about to navigate away.
+        setNotice('Google par le ja rahe hain...');
+        return;
       }
+      await finishLogin(user);
+    } catch (err) {
+      fail(err);
     } finally {
       setLoading(false);
     }
   };
 
+  const ensureRecaptcha = () => {
+    if (recaptchaRef.current) return recaptchaRef.current;
+    const verifier = attachRecaptcha('recaptcha-container');
+    recaptchaRef.current = verifier;
+    recaptchaWidgetId.current = verifier.widgetId;
+    return verifier;
+  };
+
+  const handleSendOtp = async (e) => {
+    e?.preventDefault();
+    clearMessages();
+    if (!PHONE_RE.test(phone)) {
+      setError('10 digit ka sahi mobile number dalein.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const verifier = ensureRecaptcha();
+      const confirmation = await sendOtp(phone, verifier);
+      confirmationRef.current = confirmation;
+      setStep('otp');
+      setNotice(`${phone} par OTP bhej diya.`);
+    } catch (err) {
+      fail(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e?.preventDefault();
+    clearMessages();
+    if (otp.trim().length < 6) {
+      setError('6 digit ka OTP dalein.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const user = await confirmOtp(confirmationRef.current, otp);
+      await finishLogin(user);
+    } catch (err) {
+      fail(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateShop = async (e) => {
+    e?.preventDefault();
+    clearMessages();
+    if (!shopName.trim()) {
+      setError('Dukaan ka naam likhein.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const shopId = await createShopForUser(pendingUser, {
+        shopName: shopName.trim(),
+        ownerName: ownerName.trim() || undefined
+      });
+      onLoginSuccess(pendingUser, shopId, 'owner');
+    } catch (err) {
+      fail(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const goBack = () => {
+    clearMessages();
+    setStep((s) => (s === 'otp' ? 'phone' : 'choose'));
+  };
+
   return (
-    <div 
-      style={{
-        minHeight: "100vh",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2.5rem 1rem",
-        background: "radial-gradient(ellipse at 50% 0%, rgba(251, 191, 36, 0.18), rgba(254, 243, 199, 0.35) 40%, #f8fafc 90%)",
-        color: "#0f172a",
-        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-        position: "relative",
-        boxSizing: "border-box"
-      }}
-    >
-      <style>{`
-        @keyframes cb-spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .cb-spinner {
-          animation: cb-spin 0.75s linear infinite;
-        }
-        .cb-submit-btn {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .cb-submit-btn:hover:not(:disabled) {
-          filter: brightness(1.06);
-          box-shadow: 0 10px 24px -4px rgba(217, 119, 6, 0.45) !important;
-          transform: translateY(-1px);
-        }
-        .cb-submit-btn:active:not(:disabled) {
-          transform: translateY(0px) scale(0.985);
-        }
-        .cb-demo-btn {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .cb-demo-btn:hover:not(:disabled) {
-          background-color: #fef3c7 !important;
-          border-color: #f59e0b !important;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18) !important;
-        }
-        .cb-demo-btn:active:not(:disabled) {
-          transform: translateY(0px) scale(0.985);
-        }
-        .cb-tab-btn {
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .cb-tab-btn:hover {
-          color: #0f172a;
-        }
-      `}</style>
-
-      {/* Light Premium Auth Container Card */}
-      <div 
-        style={{
-          width: "100%",
-          maxWidth: "430px",
-          backgroundColor: "#ffffff",
-          borderRadius: "1.5rem",
-          padding: "2.25rem 1.75rem",
-          boxShadow: "0 25px 50px -12px rgba(217, 119, 6, 0.14), 0 0 0 1px rgba(226, 232, 240, 0.8), 0 2px 4px rgba(0, 0, 0, 0.02)",
-          display: "flex",
-          flexDirection: "column",
-          boxSizing: "border-box",
-          position: "relative"
-        }}
-      >
-        {/* App Branding & Logo Header */}
-        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-          {/* Logo / Brand Icon Badge */}
-          <div style={{ display: "inline-flex", position: "relative", marginBottom: "0.85rem" }}>
-            <img 
-              src="/logo.png" 
-              alt="Chakkibook Logo" 
-              style={{ 
-                width: "76px", 
-                height: "76px", 
-                borderRadius: "1.25rem", 
-                objectFit: "cover",
-                boxShadow: "0 10px 25px -4px rgba(217, 119, 6, 0.3)",
-                border: "2.5px solid #fef3c7",
-                display: "block"
-              }} 
-              onError={(e) => { e.target.style.display = "none"; }}
-            />
+    <div className="cb-auth">
+      <div className="cb-auth-card">
+        <header className="cb-auth-head">
+          <div className="cb-auth-mark">
+            <Store size={30} strokeWidth={1.9} />
           </div>
-
-          {/* Micro-badge */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.4rem" }}>
-            <span style={{ 
-              display: "inline-flex", 
-              alignItems: "center", 
-              gap: "5px", 
-              padding: "3px 10px", 
-              background: "#fef3c7", 
-              border: "1px solid #fde68a", 
-              borderRadius: "9999px", 
-              fontSize: "0.7rem", 
-              fontWeight: 700, 
-              color: "#b45309",
-              letterSpacing: "0.04em",
-              textTransform: "uppercase"
-            }}>
-              <Sparkles size={12} strokeWidth={2.5} style={{ color: "#d97706" }} />
-              Enterprise Register
-            </span>
-          </div>
-
-          <h1 style={{ 
-            fontSize: "1.75rem", 
-            fontWeight: 800, 
-            margin: "0 0 0.3rem 0", 
-            color: "#0f172a",
-            letterSpacing: "-0.03em",
-            fontFamily: "'Outfit', system-ui, sans-serif"
-          }}>
-            {t('login.title')}
-          </h1>
-          <p style={{ fontSize: "0.86rem", color: "#64748b", margin: 0, fontWeight: 500 }}>
-            {t('login.subtitle')}
+          <h1 className="cb-auth-title">Chakkibook</h1>
+          <p className="cb-auth-sub">
+            {step === 'choose' && 'Chakki aur tel ki digital register — boliye, kaam ho jaayega'}
+            {step === 'phone' && 'Apna mobile number dalein'}
+            {step === 'otp' && 'OTP dalein'}
+            {step === 'newshop' && 'Aapki dukaan ka profile'}
           </p>
-        </div>
+        </header>
 
-        {/* Segmented Tab Switcher (Sign In / Naya Account) */}
-        <div 
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            background: "#f1f5f9",
-            padding: "4px",
-            borderRadius: "0.85rem",
-            marginBottom: "1.5rem",
-            border: "1px solid #e2e8f0",
-            gap: "4px"
-          }}
-        >
-          <button
-            type="button"
-            className="cb-tab-btn"
-            onClick={() => { setIsRegistering(false); setError(""); }}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "0.65rem",
-              border: !isRegistering ? "1px solid rgba(226, 232, 240, 0.8)" : "1px solid transparent",
-              background: !isRegistering ? "#ffffff" : "transparent",
-              color: !isRegistering ? "#0f172a" : "#64748b",
-              fontWeight: !isRegistering ? 700 : 600,
-              fontSize: "0.88rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "7px",
-              boxShadow: !isRegistering ? "0 2px 6px rgba(0, 0, 0, 0.06)" : "none"
-            }}
-          >
-            <Key size={16} strokeWidth={2.2} style={{ color: !isRegistering ? "#d97706" : "#94a3b8" }} />
-            <span>{t('login.signInTab')}</span>
-          </button>
-          <button
-            type="button"
-            className="cb-tab-btn"
-            onClick={() => { setIsRegistering(true); setError(""); }}
-            style={{
-              padding: "10px 14px",
-              borderRadius: "0.65rem",
-              border: isRegistering ? "1px solid rgba(226, 232, 240, 0.8)" : "1px solid transparent",
-              background: isRegistering ? "#ffffff" : "transparent",
-              color: isRegistering ? "#0f172a" : "#64748b",
-              fontWeight: isRegistering ? 700 : 600,
-              fontSize: "0.88rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "7px",
-              boxShadow: isRegistering ? "0 2px 6px rgba(0, 0, 0, 0.06)" : "none"
-            }}
-          >
-            <UserPlus size={16} strokeWidth={2.2} style={{ color: isRegistering ? "#d97706" : "#94a3b8" }} />
-            <span>{t('login.newAccTab')}</span>
-          </button>
-        </div>
-
-        {/* Error Alert */}
         {error && (
-          <div style={{
-            backgroundColor: "#fef2f2",
-            border: "1px solid #fecaca",
-            color: "#b91c1c",
-            padding: "0.75rem 1rem",
-            borderRadius: "0.75rem",
-            fontSize: "0.85rem",
-            marginBottom: "1.25rem",
-            fontWeight: 500,
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "8px",
-            lineHeight: 1.45
-          }}>
-            <AlertCircle size={17} strokeWidth={2} style={{ color: "#dc2626", flexShrink: 0, marginTop: "2px" }} />
+          <div className="cb-auth-alert" role="alert">
+            <AlertCircle size={17} strokeWidth={2} />
             <span>{error}</span>
           </div>
         )}
+        {!error && notice && <div className="cb-auth-note" role="status">{notice}</div>}
 
-        {/* Authentication Form */}
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.15rem" }}>
-          {isRegistering && (
-            <>
-              <div>
-                <label style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: "6px", 
-                  fontSize: "0.8rem", 
-                  fontWeight: 600, 
-                  marginBottom: "0.4rem", 
-                  color: "#334155" 
-                }}>
-                  <Store size={14} style={{ color: focusedField === "shopName" ? "#d97706" : "#64748b" }} />
-                  <span>{t('login.shopName')}</span>
-                </label>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  backgroundColor: "#ffffff",
-                  border: focusedField === "shopName" ? "1.5px solid #d97706" : "1.5px solid #cbd5e1",
-                  borderRadius: "0.75rem",
-                  boxShadow: focusedField === "shopName" ? "0 0 0 3.5px rgba(217, 119, 6, 0.16)" : "0 1px 2px rgba(0, 0, 0, 0.03)",
-                  transition: "all 0.15s ease",
-                  overflow: "hidden"
-                }}>
+        {/* ---------------- choose provider ---------------- */}
+        {step === 'choose' && (
+          <div className="cb-auth-stack">
+            <button type="button" className="cb-auth-google" onClick={handleGoogle} disabled={loading}>
+              <GoogleGlyph />
+              <span>Google se login karein</span>
+            </button>
+
+            <div className="cb-auth-or"><span>ya</span></div>
+
+            <button
+              type="button"
+              className="cb-auth-phone"
+              onClick={() => { clearMessages(); setStep('phone'); }}
+              disabled={loading}
+            >
+              <Smartphone size={20} strokeWidth={2.2} />
+              <span>Mobile number se OTP</span>
+            </button>
+
+            <p className="cb-auth-fineprint">
+              Password ki zaroorat nahi. OTP aane mein 30 second lag sakte hain.
+            </p>
+          </div>
+        )}
+
+        {/* ---------------- phone number ---------------- */}
+        {step === 'phone' && (
+          <form className="cb-auth-stack" onSubmit={handleSendOtp}>
+            <Field
+              label="Mobile number"
+              icon={<Phone size={15} />}
+              input={
+                <div className="cb-phone-input">
+                  <span className="cb-phone-prefix">+91</span>
                   <input
-                    type="text"
-                    placeholder="e.g. Vanshu Atta Chakki & Oil Mill"
-                    value={shopName}
-                    onChange={(e) => setShopName(e.target.value)}
-                    onFocus={() => setFocusedField("shopName")}
-                    onBlur={() => setFocusedField(null)}
-                    required
-                    style={{
-                      width: "100%",
-                      minHeight: "48px",
-                      padding: "0.75rem 1rem",
-                      border: "none",
-                      backgroundColor: "transparent",
-                      color: "#0f172a",
-                      fontSize: "0.94rem",
-                      fontWeight: 500,
-                      outline: "none",
-                      boxSizing: "border-box"
-                    }}
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    placeholder="9876543210"
+                    maxLength={10}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    autoFocus
                   />
                 </div>
-              </div>
+              }
+            />
+            <button type="submit" className="cb-auth-submit" disabled={loading}>
+              {loading ? <Loader2 size={18} className="cb-auth-spin" /> : <KeyRound size={18} strokeWidth={2.2} />}
+              <span>OTP bhejein</span>
+            </button>
+            <BackLink onClick={goBack} />
+          </form>
+        )}
 
-              <div>
-                <label style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: "6px", 
-                  fontSize: "0.8rem", 
-                  fontWeight: 600, 
-                  marginBottom: "0.4rem", 
-                  color: "#334155" 
-                }}>
-                  <User size={14} style={{ color: focusedField === "ownerName" ? "#d97706" : "#64748b" }} />
-                  <span>{t('login.ownerName')}</span>
-                </label>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  backgroundColor: "#ffffff",
-                  border: focusedField === "ownerName" ? "1.5px solid #d97706" : "1.5px solid #cbd5e1",
-                  borderRadius: "0.75rem",
-                  boxShadow: focusedField === "ownerName" ? "0 0 0 3.5px rgba(217, 119, 6, 0.16)" : "0 1px 2px rgba(0, 0, 0, 0.03)",
-                  transition: "all 0.15s ease",
-                  overflow: "hidden"
-                }}>
-                  <input
-                    type="text"
-                    placeholder="e.g. Bhaiya / Krish"
-                    value={ownerName}
-                    onChange={(e) => setOwnerName(e.target.value)}
-                    onFocus={() => setFocusedField("ownerName")}
-                    onBlur={() => setFocusedField(null)}
-                    required
-                    style={{
-                      width: "100%",
-                      minHeight: "48px",
-                      padding: "0.75rem 1rem",
-                      border: "none",
-                      backgroundColor: "transparent",
-                      color: "#0f172a",
-                      fontSize: "0.94rem",
-                      fontWeight: 500,
-                      outline: "none",
-                      boxSizing: "border-box"
-                    }}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+        {/* ---------------- otp ---------------- */}
+        {step === 'otp' && (
+          <form className="cb-auth-stack" onSubmit={handleVerifyOtp}>
+            <Field
+              label={`+91 ${phone} par aaya 6-digit OTP`}
+              icon={<MessageSquareLock size={15} />}
+              input={
+                <input
+                  className="cb-auth-input"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="000000"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  autoFocus
+                />
+              }
+            />
+            <button type="submit" className="cb-auth-submit" disabled={loading}>
+              {loading ? <Loader2 size={18} className="cb-auth-spin" /> : <ArrowRight size={18} strokeWidth={2.4} />}
+              <span>Verify karein</span>
+            </button>
+            <button
+              type="button"
+              className="cb-auth-link"
+              onClick={() => { clearMessages(); setStep('phone'); }}
+            >
+              Number badalna hai?
+            </button>
+          </form>
+        )}
 
-          <div>
-            <label style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "6px", 
-              fontSize: "0.8rem", 
-              fontWeight: 600, 
-              marginBottom: "0.4rem", 
-              color: "#334155" 
-            }}>
-              <Phone size={14} style={{ color: focusedField === "phone" ? "#d97706" : "#64748b" }} />
-              <span>{t('login.mobile')}</span>
-            </label>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              backgroundColor: "#ffffff",
-              border: focusedField === "phone" ? "1.5px solid #d97706" : "1.5px solid #cbd5e1",
-              borderRadius: "0.75rem",
-              boxShadow: focusedField === "phone" ? "0 0 0 3.5px rgba(217, 119, 6, 0.16)" : "0 1px 2px rgba(0, 0, 0, 0.03)",
-              transition: "all 0.15s ease",
-              overflow: "hidden"
-            }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "0 10px 0 14px",
-                color: "#64748b",
-                fontSize: "0.92rem",
-                fontWeight: 700,
-                borderRight: "1px solid #e2e8f0",
-                userSelect: "none",
-                backgroundColor: "#f8fafc",
-                minHeight: "48px"
-              }}>
-                <span>+91</span>
-              </div>
-              <input
-                type="tel"
-                placeholder="9876543210"
-                maxLength="10"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                onFocus={() => setFocusedField("phone")}
-                onBlur={() => setFocusedField(null)}
-                required
-                style={{
-                  width: "100%",
-                  minHeight: "48px",
-                  padding: "0.75rem 1rem",
-                  border: "none",
-                  backgroundColor: "transparent",
-                  color: "#0f172a",
-                  fontSize: "1rem",
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                  outline: "none",
-                  boxSizing: "border-box"
-                }}
-              />
-            </div>
-          </div>
+        {/* ---------------- new shop profile ---------------- */}
+        {step === 'newshop' && (
+          <form className="cb-auth-stack" onSubmit={handleCreateShop}>
+            <p className="cb-auth-fineprint" style={{ marginBottom: '0.25rem' }}>
+              Pehli baar aa rahe hain — dukaan ka naam bataiye, bas.
+            </p>
+            <Field
+              label="Dukaan / Chakki ka naam"
+              icon={<Store size={15} />}
+              input={
+                <input
+                  className="cb-auth-input"
+                  type="text"
+                  placeholder="e.g. Vanshu Atta Chakki"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  autoFocus
+                />
+              }
+            />
+            <Field
+              label="Aapka naam"
+              icon={<User size={15} />}
+              input={
+                <input
+                  className="cb-auth-input"
+                  type="text"
+                  placeholder="e.g. Bhaiya"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                />
+              }
+            />
+            <button type="submit" className="cb-auth-submit" disabled={loading}>
+              {loading ? <Loader2 size={18} className="cb-auth-spin" /> : <ArrowRight size={18} strokeWidth={2.4} />}
+              <span>Shuru karein</span>
+            </button>
+          </form>
+        )}
 
-          <div>
-            <label style={{ 
-              display: "flex", 
-              alignItems: "center", 
-              gap: "6px", 
-              fontSize: "0.8rem", 
-              fontWeight: 600, 
-              marginBottom: "0.4rem", 
-              color: "#334155" 
-            }}>
-              <Lock size={14} style={{ color: focusedField === "password" ? "#d97706" : "#64748b" }} />
-              <span>{t('login.password')}</span>
-            </label>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              backgroundColor: "#ffffff",
-              border: focusedField === "password" ? "1.5px solid #d97706" : "1.5px solid #cbd5e1",
-              borderRadius: "0.75rem",
-              boxShadow: focusedField === "password" ? "0 0 0 3.5px rgba(217, 119, 6, 0.16)" : "0 1px 2px rgba(0, 0, 0, 0.03)",
-              transition: "all 0.15s ease",
-              overflow: "hidden"
-            }}>
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onFocus={() => setFocusedField("password")}
-                onBlur={() => setFocusedField(null)}
-                required
-                style={{
-                  width: "100%",
-                  minHeight: "48px",
-                  padding: "0.75rem 1rem",
-                  border: "none",
-                  backgroundColor: "transparent",
-                  color: "#0f172a",
-                  fontSize: "0.95rem",
-                  outline: "none",
-                  boxSizing: "border-box"
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  padding: "0 14px",
-                  height: "48px",
-                  cursor: "pointer",
-                  color: "#94a3b8",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
+        {/* Mount point for the invisible reCAPTCHA. Must always be in the DOM
+            so the verifier can be attached before the first OTP request. */}
+        <div id="recaptcha-container" />
 
-          {/* Submit Action Button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="cb-submit-btn"
-            style={{
-              width: "100%",
-              minHeight: "50px",
-              marginTop: "0.35rem",
-              background: "linear-gradient(135deg, #d97706 0%, #b45309 100%)",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "0.75rem",
-              fontSize: "1rem",
-              fontWeight: 700,
-              letterSpacing: "0.02em",
-              cursor: loading ? "not-allowed" : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.6rem",
-              boxShadow: "0 6px 18px rgba(217, 119, 6, 0.35)",
-              opacity: loading ? 0.75 : 1
-            }}
-          >
-            {loading ? (
-              <>
-                <Loader2 size={18} strokeWidth={2.5} className="cb-spinner" />
-                <span>{t('login.loading')}</span>
-              </>
-            ) : isRegistering ? (
-              <>
-                <UserPlus size={18} strokeWidth={2.2} />
-                <span>{t('login.createAccBtn')}</span>
-                <ArrowRight size={16} strokeWidth={2.2} />
-              </>
-            ) : (
-              <>
-                <Key size={18} strokeWidth={2.2} />
-                <span>{t('login.signInBtn')}</span>
-                <ArrowRight size={16} strokeWidth={2.2} />
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          margin: "1.4rem 0 1rem 0"
-        }}>
-          <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
-          <span style={{ 
-            fontSize: "0.72rem", 
-            fontWeight: 700, 
-            color: "#94a3b8", 
-            letterSpacing: "0.06em",
-            textTransform: "uppercase"
-          }}>
-            Instant Test Access
-          </span>
-          <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
-        </div>
-
-
-
-        {/* Trust & Security Guarantee Badge */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "6px",
-          marginTop: "1.1rem",
-          fontSize: "0.74rem",
-          color: "#64748b",
-          fontWeight: 500
-        }}>
-          <ShieldCheck size={15} strokeWidth={2.2} style={{ color: "#059669" }} />
-          <span>Cloud Sync & 256-bit Encrypted Ledger</span>
-        </div>
-
-        {/* Watermark Credit */}
-        <div style={{ 
-          marginTop: "1.35rem", 
-          paddingTop: "0.95rem", 
-          borderTop: "1px solid #f1f5f9", 
-          textAlign: "center" 
-        }}>
-          <span style={{ 
-            fontSize: "0.78rem", 
-            color: "#64748b", 
-            fontWeight: 500,
-            letterSpacing: "0.01em"
-          }}>
-            Made with ❤️ by <strong style={{ color: "#b45309", fontWeight: 700 }}>Krish Tiwari & Team</strong>
-          </span>
+        <div className="cb-auth-trust">
+          <ShieldCheck size={15} strokeWidth={2.2} />
+          <span>Aapka data aapke phone mein bhi surakshit rehta hai</span>
         </div>
       </div>
-
-      {/* Footer Branding */}
-      <footer style={{ marginTop: "1.25rem", textAlign: "center" }}>
-        <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500, letterSpacing: "0.01em" }}>
-          Chakkibook V4.5-AI Supreme • Enterprise Flour & Oil Mill Register
-        </span>
-      </footer>
     </div>
+  );
+}
+
+function Field({ label, icon, input }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <div className="cb-field">
+      <label className="cb-field-label" style={{ color: focused ? 'hsl(var(--brand-600))' : 'hsl(var(--ink-2))' }}>
+        {icon}
+        <span>{label}</span>
+      </label>
+      <div
+        className="cb-field-box"
+        data-focused={focused}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={() => setFocused(false)}
+      >
+        {input}
+      </div>
+    </div>
+  );
+}
+
+function BackLink({ onClick }) {
+  return (
+    <button type="button" className="cb-auth-link" onClick={onClick}>
+      <ArrowLeft size={15} /> Wapas
+    </button>
+  );
+}
+
+/** Google's mark. Inline SVG so it needs no extra dependency. */
+function GoogleGlyph() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24s.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </svg>
   );
 }
