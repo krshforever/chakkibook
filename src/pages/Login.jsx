@@ -1,65 +1,42 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Loader2,
   AlertCircle,
   ArrowRight,
-  ArrowLeft,
-  Phone,
   Store,
   User,
-  KeyRound,
-  ShieldCheck,
-  MessageSquareLock,
-  Smartphone
+  ShieldCheck
 } from 'lucide-react';
 import {
   signInWithGoogle,
   resolveGoogleRedirect,
-  attachRecaptcha,
-  sendOtp,
-  confirmOtp,
   authErrorMessage
 } from '../firebase/auth';
 import { resolveShopForUser, createShopForUser } from '../firebase/shopBootstrap';
-import { useTranslation } from '../utils/translations';
 
 /**
- * Sign-in.
+ * Sign-in — Google only.
  *
- * Two first-class paths, no password anywhere:
+ * Phone OTP was removed: it needs Blaze billing attached to the Firebase
+ * project (`auth/billing-not-enabled`), and the billing account on file is
+ * closed. Until billing exists, the OTP button can only fail, so it is gone
+ * rather than broken. The OTP helpers still live in `firebase/auth.js` —
+ * re-adding the UI is a single step block when billing is sorted.
  *
- *   Google  — one tap, the identity most Android phones already have.
- *   Phone   — OTP, no memory required beyond the number itself.
- *
- * The old screen demanded a password before anything else, which for the
- * intended user (a mill operator who may not read) made the rest of the app
- * unreachable. Both paths converge on `resolveShopForUser`, so a returning
- * user goes straight through and a new one is asked only for a shop name.
- *
- * `step` is an explicit state machine rather than derived flags so that a
- * failed OTP can drop back to the number step with the number already filled.
+ * Google is the identity most Android phones already have: one tap, no
+ * password, no number to type. New users name their shop once via
+ * `resolveShopForUser` → `createShopForUser`; returning users pass straight
+ * through (`needsShopProfile` in App.jsx keeps Login mounted until then).
  */
 
-const PHONE_RE = /^[6-9]\d{9}$/;
-
 export default function Login({ onLoginSuccess }) {
-  const { t } = useTranslation();
-
-  const [step, setStep] = useState('choose'); // choose | phone | otp | newshop
-  const [phone, setPhone] = useState('');
-  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState('choose'); // choose | newshop
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
   const [notice, setNotice] = useState('');
-
-  // The confirmation result holds the verification id; it is not stable across
-  // a re-render, so it lives in a ref rather than state.
-  const confirmationRef = useRef(null);
-  const recaptchaRef = useRef(null);
-  const recaptchaWidgetId = useRef(null);
 
   // A redirect-based Google sign-in lands here with no session until we ask.
   useEffect(() => {
@@ -74,23 +51,13 @@ export default function Login({ onLoginSuccess }) {
       }
     })();
     return () => { alive = false; };
-  }, []);
-
-  // Tear the reCAPTCHA down on unmount; leaving it mounted leaks the widget
-  // into the next mount of this screen.
-  useEffect(() => {
-    return () => {
-      if (recaptchaRef.current) {
-        try { recaptchaRef.current.clear(); } catch (_) { /* already gone */ }
-        recaptchaRef.current = null;
-      }
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fail = (err) => setError(authErrorMessage(err));
   const clearMessages = () => { setError(''); setNotice(''); };
 
-  /** Shared tail for both providers: resolve the shop, then hand off. */
+  /** Shared tail: resolve the shop, then hand off. */
   const finishLogin = useCallback(async (user) => {
     try {
       const { shopId, needsShopData } = await resolveShopForUser(user);
@@ -124,53 +91,6 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
-  const ensureRecaptcha = () => {
-    if (recaptchaRef.current) return recaptchaRef.current;
-    const verifier = attachRecaptcha('recaptcha-container');
-    recaptchaRef.current = verifier;
-    recaptchaWidgetId.current = verifier.widgetId;
-    return verifier;
-  };
-
-  const handleSendOtp = async (e) => {
-    e?.preventDefault();
-    clearMessages();
-    if (!PHONE_RE.test(phone)) {
-      setError('10 digit ka sahi mobile number dalein.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const verifier = ensureRecaptcha();
-      const confirmation = await sendOtp(phone, verifier);
-      confirmationRef.current = confirmation;
-      setStep('otp');
-      setNotice(`${phone} par OTP bhej diya.`);
-    } catch (err) {
-      fail(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e?.preventDefault();
-    clearMessages();
-    if (otp.trim().length < 6) {
-      setError('6 digit ka OTP dalein.');
-      return;
-    }
-    setLoading(true);
-    try {
-      const user = await confirmOtp(confirmationRef.current, otp);
-      await finishLogin(user);
-    } catch (err) {
-      fail(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateShop = async (e) => {
     e?.preventDefault();
     clearMessages();
@@ -192,11 +112,6 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
-  const goBack = () => {
-    clearMessages();
-    setStep((s) => (s === 'otp' ? 'phone' : 'choose'));
-  };
-
   return (
     <div className="cb-auth">
       <div className="cb-auth-card">
@@ -206,10 +121,9 @@ export default function Login({ onLoginSuccess }) {
           </div>
           <h1 className="cb-auth-title">Chakkibook</h1>
           <p className="cb-auth-sub">
-            {step === 'choose' && 'Chakki aur tel ki digital register — boliye, kaam ho jaayega'}
-            {step === 'phone' && 'Apna mobile number dalein'}
-            {step === 'otp' && 'OTP dalein'}
-            {step === 'newshop' && 'Aapki dukaan ka profile'}
+            {step === 'choose'
+              ? 'Chakki aur tel ki digital register — boliye, kaam ho jaayega'
+              : 'Aapki dukaan ka profile'}
           </p>
         </header>
 
@@ -221,94 +135,19 @@ export default function Login({ onLoginSuccess }) {
         )}
         {!error && notice && <div className="cb-auth-note" role="status">{notice}</div>}
 
-        {/* ---------------- choose provider ---------------- */}
         {step === 'choose' && (
           <div className="cb-auth-stack">
             <button type="button" className="cb-auth-google" onClick={handleGoogle} disabled={loading}>
-              <GoogleGlyph />
-              <span>Google se login karein</span>
-            </button>
-
-            <div className="cb-auth-or"><span>ya</span></div>
-
-            <button
-              type="button"
-              className="cb-auth-phone"
-              onClick={() => { clearMessages(); setStep('phone'); }}
-              disabled={loading}
-            >
-              <Smartphone size={20} strokeWidth={2.2} />
-              <span>Mobile number se OTP</span>
+              {loading
+                ? <Loader2 size={19} className="cb-auth-spin" />
+                : <GoogleGlyph />}
+              <span>{loading ? 'Jod rahe hain...' : 'Google se login karein'}</span>
             </button>
 
             <p className="cb-auth-fineprint">
-              Password ki zaroorat nahi. OTP aane mein 30 second lag sakte hain.
+              Password ki zaroorat nahi — jis Google account se phone chalta hai, wahi kaafi hai.
             </p>
           </div>
-        )}
-
-        {/* ---------------- phone number ---------------- */}
-        {step === 'phone' && (
-          <form className="cb-auth-stack" onSubmit={handleSendOtp}>
-            <Field
-              label="Mobile number"
-              icon={<Phone size={15} />}
-              input={
-                <div className="cb-phone-input">
-                  <span className="cb-phone-prefix">+91</span>
-                  <input
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel"
-                    placeholder="9876543210"
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                    autoFocus
-                  />
-                </div>
-              }
-            />
-            <button type="submit" className="cb-auth-submit" disabled={loading}>
-              {loading ? <Loader2 size={18} className="cb-auth-spin" /> : <KeyRound size={18} strokeWidth={2.2} />}
-              <span>OTP bhejein</span>
-            </button>
-            <BackLink onClick={goBack} />
-          </form>
-        )}
-
-        {/* ---------------- otp ---------------- */}
-        {step === 'otp' && (
-          <form className="cb-auth-stack" onSubmit={handleVerifyOtp}>
-            <Field
-              label={`+91 ${phone} par aaya 6-digit OTP`}
-              icon={<MessageSquareLock size={15} />}
-              input={
-                <input
-                  className="cb-auth-input"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="000000"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                  autoFocus
-                />
-              }
-            />
-            <button type="submit" className="cb-auth-submit" disabled={loading}>
-              {loading ? <Loader2 size={18} className="cb-auth-spin" /> : <ArrowRight size={18} strokeWidth={2.4} />}
-              <span>Verify karein</span>
-            </button>
-            <button
-              type="button"
-              className="cb-auth-link"
-              onClick={() => { clearMessages(); setStep('phone'); }}
-            >
-              Number badalna hai?
-            </button>
-          </form>
         )}
 
         {/* ---------------- new shop profile ---------------- */}
@@ -351,10 +190,6 @@ export default function Login({ onLoginSuccess }) {
           </form>
         )}
 
-        {/* Mount point for the invisible reCAPTCHA. Must always be in the DOM
-            so the verifier can be attached before the first OTP request. */}
-        <div id="recaptcha-container" />
-
         <div className="cb-auth-trust">
           <ShieldCheck size={15} strokeWidth={2.2} />
           <span>Aapka data aapke phone mein bhi surakshit rehta hai</span>
@@ -381,14 +216,6 @@ function Field({ label, icon, input }) {
         {input}
       </div>
     </div>
-  );
-}
-
-function BackLink({ onClick }) {
-  return (
-    <button type="button" className="cb-auth-link" onClick={onClick}>
-      <ArrowLeft size={15} /> Wapas
-    </button>
   );
 }
 
