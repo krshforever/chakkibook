@@ -1414,3 +1414,25 @@ input[autocomplete='one-time-code'] {
 .cb-auth-trust svg { color: hsl(var(--green-700)); }
 
 #recaptcha-container { min-height: 0; }
+
+/* Password field with a reveal toggle, mirroring the +91 phone field's shape. */
+.cb-password-input {
+  display: flex;
+  align-items: stretch;
+}
+.cb-password-input input {
+  flex: 1;
+  min-width: 0;
+}
+.cb-password-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: hsl(var(--ink-3));
+  cursor: pointer;
+}
+.cb-password-toggle:hover { color: hsl(var(--ink-2)); }

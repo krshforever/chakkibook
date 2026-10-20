@@ -28,7 +28,9 @@ import {
   signInWithPhoneNumber,
   signOut,
   onAuthStateChanged,
-  RecaptchaVerifier
+  RecaptchaVerifier,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { auth } from './config';
 
@@ -127,6 +129,30 @@ export async function logoutUser() {
 }
 
 export const onAuthChange = (callback) => onAuthStateChanged(auth, callback);
+
+/**
+ * Email/password sign-in, keyed on the operator's mobile number.
+ *
+ * Firebase Auth's free tier has no SMS provider, so a 10-digit mobile number
+ * is mapped onto a synthetic email address instead. The number is still the
+ * thing the operator knows and types; the password is the only thing they
+ * must remember.
+ *
+ * The email/password provider is the one auth method on this project that
+ * works with no billing, no OAuth client and no Console setup — see the
+ * sign-in screen for the current state of the alternatives.
+ */
+export const registerUser = async (phone, password) => {
+  const email = phoneToEmail(phone);
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
+};
+
+export const loginUser = async (phone, password) => {
+  const email = phoneToEmail(phone);
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
+};
 
 /** Raw list of auth error codes worth showing a user, with Hindi copy. */
 export const AUTH_ERRORS = {

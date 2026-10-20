@@ -5,32 +5,53 @@ import {
   ArrowRight,
   Store,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Phone,
+  Lock,
+  Eye,
+  EyeOff,
+  UserPlus,
+  KeyRound
 } from 'lucide-react';
 import {
   signInWithGoogle,
   resolveGoogleRedirect,
+  loginUser,
+  registerUser,
   authErrorMessage
 } from '../firebase/auth';
 import { resolveShopForUser, createShopForUser } from '../firebase/shopBootstrap';
 
 /**
- * Sign-in — Google only.
+ * Sign-in.
  *
- * Phone OTP was removed: it needs Blaze billing attached to the Firebase
- * project (`auth/billing-not-enabled`), and the billing account on file is
- * closed. Until billing exists, the OTP button can only fail, so it is gone
- * rather than broken. The OTP helpers still live in `firebase/auth.js` —
- * re-adding the UI is a single step block when billing is sorted.
+ * Two paths, because the project has one auth method that works today and
+ * one that is one Console click away:
  *
- * Google is the identity most Android phones already have: one tap, no
- * password, no number to type. New users name their shop once via
- * `resolveShopForUser` → `createShopForUser`; returning users pass straight
- * through (`needsShopProfile` in App.jsx keeps Login mounted until then).
+ *   Mobile + password — WORKS NOW. Firebase's free tier has no SMS provider,
+ *     so the 10-digit number is mapped onto a synthetic email
+ *     (`9876543210@chakkibook.local`) and the email/password provider signs
+ *     it. No billing, no OAuth client, no Console setup. The operator types
+ *     the number they already know.
+ *
+ *   Google — one click on the Console, and then it is the best option by far:
+ *     no number, no password. It currently fails with `invalid_client`
+ *     because the project has no Google OAuth client, and that client can only
+ *     be created in Google Cloud Console (the API that does it is not
+ *     publicly reachable).
+ *
+ * Both paths converge on `resolveShopForUser`, so a returning user goes
+ * straight through and a new one is asked only for a shop name.
  */
 
+const PHONE_RE = /^[6-9]\d{9}$/;
+
 export default function Login({ onLoginSuccess }) {
-  const [step, setStep] = useState('choose'); // choose | newshop
+  const [step, setStep] = useState('choose'); // choose | account | newshop
+  const [mode, setMode] = useState('signin'); // signin | register
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [error, setError] = useState('');
@@ -91,6 +112,37 @@ export default function Login({ onLoginSuccess }) {
     }
   };
 
+  const handleAccountSubmit = async (e) => {
+    e?.preventDefault();
+    clearMessages();
+    if (!PHONE_RE.test(phone)) {
+      setError('10 digit ka sahi mobile number dalein.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password kam se kam 6 character ka rakhein.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const user = mode === 'register'
+        ? await registerUser(phone, password)
+        : await loginUser(phone, password);
+      await finishLogin(user);
+    } catch (err) {
+      if (err && err.code === 'auth/email-already-in-use') {
+        setError('Yeh number pehle se bana hua hai. Login karein.');
+        setMode('signin');
+      } else if (err && (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found')) {
+        setError('Number ya password galat hai. (Naya account? Upar "Naya Account" dabayein.)');
+      } else {
+        fail(err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateShop = async (e) => {
     e?.preventDefault();
     clearMessages();
@@ -121,9 +173,9 @@ export default function Login({ onLoginSuccess }) {
           </div>
           <h1 className="cb-auth-title">Chakkibook</h1>
           <p className="cb-auth-sub">
-            {step === 'choose'
-              ? 'Chakki aur tel ki digital register — boliye, kaam ho jaayega'
-              : 'Aapki dukaan ka profile'}
+            {step === 'choose' && 'Chakki aur tel ki digital register — boliye, kaam ho jaayega'}
+            {step === 'account' && (mode === 'register' ? 'Naya account banayein' : 'Apne number se login karein')}
+            {step === 'newshop' && 'Aapki dukaan ka profile'}
           </p>
         </header>
 
@@ -138,16 +190,87 @@ export default function Login({ onLoginSuccess }) {
         {step === 'choose' && (
           <div className="cb-auth-stack">
             <button type="button" className="cb-auth-google" onClick={handleGoogle} disabled={loading}>
-              {loading
-                ? <Loader2 size={19} className="cb-auth-spin" />
-                : <GoogleGlyph />}
-              <span>{loading ? 'Jod rahe hain...' : 'Google se login karein'}</span>
+              {loading ? <Loader2 size={19} className="cb-auth-spin" /> : <GoogleGlyph />}
+              <span>Google se login karein</span>
+            </button>
+
+            <div className="cb-auth-or"><span>ya</span></div>
+
+            <button
+              type="button"
+              className="cb-auth-phone"
+              onClick={() => { clearMessages(); setStep('account'); }}
+              disabled={loading}
+            >
+              <Phone size={20} strokeWidth={2.2} />
+              <span>Mobile number se login</span>
             </button>
 
             <p className="cb-auth-fineprint">
-              Password ki zaroorat nahi — jis Google account se phone chalta hai, wahi kaafi hai.
+              Pehli baar hai? Neeche &quot;Naya Account&quot; dabayein.
             </p>
           </div>
+        )}
+
+        {/* ---------------- account ---------------- */}
+        {step === 'account' && (
+          <form className="cb-auth-stack" onSubmit={handleAccountSubmit}>
+            <Field
+              label="Mobile number"
+              icon={<Phone size={15} />}
+              input={
+                <div className="cb-phone-input">
+                  <span className="cb-phone-prefix">+91</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    placeholder="9876543210"
+                    maxLength={10}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    autoFocus
+                  />
+                </div>
+              }
+            />
+            <Field
+              label="Password"
+              icon={<Lock size={15} />}
+              input={
+                <div className="cb-password-input">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                    placeholder="Kam se kam 6 character"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    className="cb-password-toggle"
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+              }
+            />
+            <button type="submit" className="cb-auth-submit" disabled={loading}>
+              {loading
+                ? <Loader2 size={18} className="cb-auth-spin" />
+                : mode === 'register' ? <UserPlus size={18} strokeWidth={2.2} /> : <KeyRound size={18} strokeWidth={2.2} />}
+              <span>{mode === 'register' ? 'Account banayein' : 'Login karein'}</span>
+            </button>
+            <button
+              type="button"
+              className="cb-auth-link"
+              onClick={() => { clearMessages(); setMode((m) => (m === 'signin' ? 'register' : 'signin')); }}
+            >
+              {mode === 'register' ? 'Pehle se account hai? Login karein' : 'Naya Account banayein'}
+            </button>
+          </form>
         )}
 
         {/* ---------------- new shop profile ---------------- */}
