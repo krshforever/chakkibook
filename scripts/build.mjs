@@ -29,6 +29,17 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const dist = path.join(root, 'dist');
 
+// Where the app will be served from. Default '/' keeps the APK, `vite preview`
+// and Firebase Hosting exactly as they were; GitHub Pages serves this repo at
+// /chakkibook/, so CI passes BASE_PATH=/chakkibook/ and every absolute asset
+// reference is prefixed. Without this the Pages build loads index.html and then
+// 404s on /assets/app-*.js — a white screen that looks like an app bug.
+const basePath = (() => {
+  const raw = process.env.BASE_PATH || '/';
+  if (!raw.startsWith('/')) throw new Error(`BASE_PATH must start with '/', got ${raw}`);
+  return raw.endsWith('/') ? raw : `${raw}/`;
+})();
+
 const t0 = Date.now();
 
 await rm(dist, { recursive: true, force: true });
@@ -75,12 +86,30 @@ if (!cssName) throw new Error(`esbuild did not emit a CSS bundle for ${jsName}`)
 //    at /src/main.jsx, which is only meaningful to `vite dev`. Make the failure
 //    loud rather than emitting an HTML that references a file we never built.
 const html = await readFile(path.join(root, 'index.html'), 'utf8');
-const replaced = html.replace('/src/main.jsx', `/assets/${jsName}`);
+const replaced = html.replace('/src/main.jsx', `${basePath}assets/${jsName}`);
 if (replaced === html) {
   throw new Error('index.html does not reference /src/main.jsx — the asset rewrite is a no-op');
 }
-const fixed = replaced.concat(`<link rel="stylesheet" href="/assets/${cssName}" />\n`);
+// index.html also links /logo.png absolutely (favicon + apple-touch-icon).
+const withIcons = replaced.replaceAll('"/logo.png"', `"${basePath}logo.png"`);
+const fixed = withIcons.concat(
+  `<link rel="stylesheet" href="${basePath}assets/${cssName}" />\n`,
+);
 await writeFile(path.join(dist, 'index.html'), fixed, 'utf8');
+
+// 3b. The bundle carries one absolute asset path of its own — AppBar renders
+//     <img src="/logo.png">. A subpath deploy needs it prefixed too, and the
+//     rewrite is asserted so a refactor that changes the string fails the build
+//     instead of shipping a broken image.
+if (basePath !== '/') {
+  const jsPath = path.join(dist, 'assets', jsName);
+  const js = await readFile(jsPath, 'utf8');
+  const patched = js.replaceAll('"/logo.png"', `"${basePath}logo.png"`);
+  if (patched === js) {
+    throw new Error('bundle has no "/logo.png" reference — BASE_PATH rewrite is a no-op');
+  }
+  await writeFile(jsPath, patched, 'utf8');
+}
 
 // 4. Static assets (logo, icons).
 const pub = path.join(root, 'public');
@@ -95,7 +124,7 @@ const cssSize = (await stat(path.join(dist, 'assets', cssName))).size;
 const htmlSize = (await stat(path.join(dist, 'index.html'))).size;
 const kb = (n) => `${(n / 1024).toFixed(1)} kb`;
 
-console.log(`build ok in ${Date.now() - t0}ms`);
+console.log(`build ok in ${Date.now() - t0}ms  (base ${basePath})`);
 console.log(`  dist/index.html         ${kb(htmlSize)}`);
 console.log(`  dist/assets/${jsName.padEnd(16)} ${kb(jsSize)}`);
 console.log(`  dist/assets/${cssName.padEnd(16)} ${kb(cssSize)}`);
