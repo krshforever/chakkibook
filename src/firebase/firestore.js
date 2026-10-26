@@ -7,10 +7,8 @@ import {
   updateDoc, 
   deleteDoc, 
   onSnapshot, 
-  query, 
-  orderBy, 
-  where,
-  getDocs,
+  query,
+  orderBy,
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from './config';
@@ -78,35 +76,17 @@ export const getShopDoc = async (shopId) => {
   return snap.exists() ? snap.data() : null;
 };
 
-// Check if phone belongs to any existing shop member
-export const findShopByPhone = async (phone) => {
-  try {
-    const memberQuery = query(collection(db, 'shops'), where('ownerPhone', '==', phone));
-    const snap = await getDocs(memberQuery);
-    if (!snap.empty) {
-      return snap.docs[0].id;
-    }
-  } catch (err) {
-    console.warn('findShopByPhone error:', err);
-  }
-  return null;
-};
-
-// Same idea for a Google account: find the shop this email already owns.
-// A missing composite index on ownerEmail is the usual failure here, and it
-// throws a links-to-create-one error — logged, not swallowed.
-export const findShopByEmail = async (email) => {
-  try {
-    const shopQuery = query(collection(db, 'shops'), where('ownerEmail', '==', email));
-    const snap = await getDocs(shopQuery);
-    if (!snap.empty) {
-      return snap.docs[0].id;
-    }
-  } catch (err) {
-    console.warn('findShopByEmail error:', err);
-  }
-  return null;
-};
+// NOTE: there is deliberately no findShopByPhone / findShopByEmail here.
+//
+// Both were a collection-wide query on `shops` filtered by ownerPhone or
+// ownerEmail. That query can only succeed if the security rules let any signed
+// in user list every shop — which is exactly the hole that made production
+// readable and writable by any self-registered account.
+//
+// A shop id is already a pure function of the identity (`shopIdForUser`), so
+// the lookup is unnecessary: compute the id, then read that one document. If
+// it is absent or not ours, the rules deny it and the caller is asked to create
+// the shop. Cross-tenant reads are not part of the design.
 
 // CRUD Operations
 export const addBoriToFirestore = async (shopId, boriData) => {
@@ -147,12 +127,19 @@ export const saveShopConfigToFirestore = async (shopId, configData) => {
   await setDoc(configRef, configData, { merge: true });
 };
 
+// Members are addressed by uid when we have one, because the security rules
+// authorise on `members/{request.auth.uid}`. Passing `uid` therefore writes the
+// record the rules will actually look for. A teammate who has not signed up yet
+// has no uid, so that call falls back to an invitation record with a generated
+// id (it grants nobody access until the owner links it to a real uid).
 export const addMemberToFirestore = async (shopId, memberData) => {
-  const col = getMembersCollection(shopId);
-  const docRef = await addDoc(col, {
-    ...memberData,
-    addedAt: serverTimestamp()
-  });
+  const payload = { ...memberData, addedAt: serverTimestamp() };
+  if (memberData?.uid) {
+    const ref = doc(db, 'shops', shopId, 'members', memberData.uid);
+    await setDoc(ref, payload, { merge: true });
+    return memberData.uid;
+  }
+  const docRef = await addDoc(getMembersCollection(shopId), payload);
   return docRef.id;
 };
 

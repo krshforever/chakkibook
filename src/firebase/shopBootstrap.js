@@ -25,15 +25,11 @@
  * are read-only getters, so there is no way to stub them after import.
  */
 let db = {
-  findShopByPhone: findShopByPhone_,
-  findShopByEmail: findShopByEmail_,
   getShopDoc: getShopDoc_,
   createShopDoc: createShopDoc_,
   addMemberToFirestore: addMemberToFirestore_
 };
 
-function findShopByPhone_() { return firestoreRef.findShopByPhone; }
-function findShopByEmail_() { return firestoreRef.findShopByEmail; }
 function getShopDoc_() { return firestoreRef.getShopDoc; }
 function createShopDoc_() { return firestoreRef.createShopDoc; }
 function addMemberToFirestore_() { return firestoreRef.addMemberToFirestore; }
@@ -49,8 +45,6 @@ export function __setDeps(overrides) {
 /** Test seam: restore the real Firestore functions. */
 export function __resetDeps() {
   db = {
-    findShopByPhone: findShopByPhone_,
-    findShopByEmail: findShopByEmail_,
     getShopDoc: getShopDoc_,
     createShopDoc: createShopDoc_,
     addMemberToFirestore: addMemberToFirestore_
@@ -80,10 +74,12 @@ export function shopIdForUser(user) {
 export async function resolveShopForUser(user) {
   if (!user) return { shopId: null, exists: false, needsShopData: true };
 
-  const phoneDigits = String(user.phoneNumber || '').replace(/\D/g, '').slice(-10);
   const shopId = shopIdForUser(user);
 
-  // Fast path: the canonical doc for this identity already exists.
+  // The shop id is a pure function of the identity, so there is exactly one
+  // document to look at. A permission error here is not a failure: it means
+  // this shop id exists but is owned by a different identity, which we must
+  // treat as "no shop for you" rather than retrying a broader query.
   if (shopId) {
     try {
       const doc = await db.getShopDoc(shopId);
@@ -92,13 +88,6 @@ export async function resolveShopForUser(user) {
       console.warn('resolveShopForUser getShopDoc:', err);
     }
   }
-
-  // Slower paths, for a user whose shop was created under a different phone
-  // or email than the one they signed in with.
-  let found = null;
-  if (phoneDigits.length === 10) found = await db.findShopByPhone(phoneDigits);
-  if (!found && user.email) found = await db.findShopByEmail(user.email);
-  if (found) return { shopId: found, exists: true, needsShopData: false };
 
   return { shopId, exists: false, needsShopData: true };
 }
@@ -118,6 +107,9 @@ export async function createShopForUser(user, { shopName, ownerName }) {
     ownerName: ownerName || user.displayName || 'Bhaiya',
     ownerPhone: phoneDigits,
     ownerEmail: user.email || '',
+    // ownerUid is the security anchor: firestore.rules lets an account create a
+    // shop only when this equals its own uid, and never allows it to change.
+    ownerUid: user.uid,
     ownerId: user.uid,
     address: 'Main Market Road',
     chakkiRates: DEFAULT_RATES,

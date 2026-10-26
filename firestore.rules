@@ -1,9 +1,94 @@
 rules_version = '2';
+
+// Multi-tenant shop data. The tenant boundary is the `shops/{shopId}` document
+// and everything under it. Access is granted ONLY to identities that have an
+// explicit member record for that shop:
+//
+//   shops/{shopId}/members/{uid}          <- the membership record
+//
+// Shop ids are derived from a phone number or an email (`shop_<digits>`), so
+// they are guessable. That is fine: guessing an id does not grant access,
+// because the member record is keyed by Firebase uid, which is not guessable
+// and can only be created by the identity that owns it.
+//
+// Previously this file was NOT what was deployed — production ran
+// `allow read, write: if isAuthenticated()`, which let any self-registered
+// account read and write every shop. Keep this file and the deployed ruleset
+// in sync; `npm run deploy:rules` is the only sanctioned way to publish it.
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /shops/{shopId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.token.shopId == shopId;
+
+    function signedIn() {
+      return request.auth != null;
     }
-    match /{document=**} { allow read, write: if false; }
+
+    function memberRef(shopId) {
+      return /databases/$(database)/documents/shops/$(shopId)/members/$(request.auth.uid);
+    }
+
+    // The caller has an explicit membership record for this shop.
+    function isMember(shopId) {
+      return signedIn() && exists(memberRef(shopId));
+    }
+
+    // The caller created this shop (ownerUid == their uid) but may not have the
+    // member record yet. This is the only way to read the shop before the
+    // bootstrap write completes, and it exposes nothing: ownerUid must already
+    // equal the caller's uid.
+    function isOwner(shopId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/shops/$(shopId))
+        && get(/databases/$(database)/documents/shops/$(shopId)).data.ownerUid == request.auth.uid;
+    }
+
+    // ---- Shop document -----------------------------------------------------
+    match /shops/{shopId} {
+      allow read: if isMember(shopId) || isOwner(shopId);
+
+      // First write: you may only create a shop you own.
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      // ownerUid is the claim anchor, so it must never be reassignable.
+      allow update: if isMember(shopId)
+        && request.resource.data.ownerUid == resource.data.ownerUid;
+
+      // Deleting a shop is destructive; only the owner's own account may.
+      allow delete: if isOwner(shopId);
+    }
+
+    // ---- Everything under a shop (boris, customers, inventory, config...) --
+    match /shops/{shopId}/{sub=**} {
+      allow read, write: if isMember(shopId);
+    }
+
+    // ---- Membership records ------------------------------------------------
+    match /shops/{shopId}/members/{uid} {
+      // You can always read your own membership record; members can read each
+      // other (the app shows the operator list).
+      allow read: if signedIn() && (request.auth.uid == uid || isMember(shopId));
+
+      // Bootstrap: you may only write your OWN record, and only into a shop
+      // you already own. This is what stops an attacker from adding themselves
+      // as a member of somebody else's shop.
+      //
+      // The second clause is team management: an existing member may create
+      // records for other people. That cannot be used to escalate, because it
+      // still requires isMember(shopId) — you cannot add anyone to a shop you
+      // are not already inside.
+      allow create: if (signedIn()
+          && request.auth.uid == uid
+          && isOwner(shopId))
+        || isMember(shopId);
+
+      // Once you are in, you can manage the rest of the team.
+      allow update, delete: if isMember(shopId);
+    }
+
+    // ---- Everything else is closed -----------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
   }
 }

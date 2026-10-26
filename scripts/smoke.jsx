@@ -438,8 +438,6 @@ const { shopIdForUser, resolveShopForUser, createShopForUser, __setDeps, __reset
 // module itself.
 const created = [];
 __setDeps({
-  findShopByPhone: async (p) => (created.find((c) => c.ownerPhone === p) ? `shop_${p}` : null),
-  findShopByEmail: async (e) => (created.find((c) => c.ownerEmail === e) ? `shop_${e}` : null),
   getShopDoc: async (id) => created.find((c) => c.id === id) || null,
   createShopDoc: async (id, data) => { created.push({ id, ...data }); },
   addMemberToFirestore: async (id, member) => { created.push({ id, member }); }
@@ -509,6 +507,22 @@ check('createShopForUser writes a shop and returns its id', async () => {
   assert.strictEqual(id, 'shop_9899999999');
   assert.strictEqual(created.length, 2, 'expected a shop doc plus an owner member');
   assert.strictEqual(created[0].name, 'Naya Chakki');
+});
+
+check('createShopForUser stamps ownerUid so the rules can authorise the create', async () => {
+  created.length = 0;
+  await createShopForUser(newPhoneUser, { shopName: 'Naya Chakki' });
+  assert.strictEqual(created[0].ownerUid, newPhoneUser.uid,
+    'ownerUid must be the caller uid, or the create rule denies it');
+});
+
+check('createShopForUser writes the member record keyed by uid, not a random id', async () => {
+  created.length = 0;
+  await createShopForUser(newPhoneUser, { shopName: 'Naya Chakki' });
+  const member = created.find((c) => c.member);
+  assert.ok(member, 'expected a member record');
+  assert.strictEqual(member.member.uid, newPhoneUser.uid,
+    'members must be addressed by uid: rules authorise on members/{request.auth.uid}');
 });
 
 check('createShopForUser is idempotent by shop id', async () => {
